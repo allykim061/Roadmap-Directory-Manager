@@ -16,7 +16,7 @@ COL_ID, COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS = (
 GRADE_ORDER = ["초1", "초2", "초3", "초4", "초5", "초6", "중1", "중2", "중3", "고1", "고2", "고3"]
 WEEKDAY_ORDER = ["월", "화", "수", "목", "금", "토", "일"]
 
-# --- [2. 인쇄 전용 CSS (극한 압축 + 전체목록 분리 모드)] ---
+# --- [2. 인쇄 전용 CSS (가독성 최우선 10pt + 여백/행간 30% 연장)] ---
 def get_print_css(orientation="세로"):
     page_size = "A4 portrait" if orientation == "세로" else "A4 landscape"
 
@@ -24,15 +24,16 @@ def get_print_css(orientation="세로"):
     <style>
         @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
         body, .stApp {{ font-family: 'Pretendard', sans-serif !important; }}
-        .report-view {{ border: 1px solid #ccc; padding: 20px; background: white; margin-top: 20px; color: black; }}
+        .report-view {{ border: 1px solid #ccc; padding: 20px; background: white; margin-top: 20px; color: black; box-sizing: border-box; }}
 
-        .a4-print-box {{ margin-bottom: 15px; page-break-after: always; }}
+        .a4-print-box {{ margin-bottom: 25px; page-break-after: always; box-sizing: border-box; }}
         .a4-print-box:last-child {{ page-break-after: auto; }}
 
-        .date-footer {{ margin-top: 5px; text-align: right; font-size: 11pt; color: #666; }}
+        .date-footer {{ margin-top: 10px; text-align: right; font-size: 11pt; color: #666; }}
         .check-box {{ display: inline-block; width: 14px; height: 14px; border: 1px solid #000; vertical-align: middle; }}
 
-        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px; }}
+        /* 표 전체 가로폭 제한을 걸어 잘림 방지 */
+        table {{ width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 15px; }}
 
         th {{
             border: 1px solid #ccc !important; padding: 8px 4px !important;
@@ -44,7 +45,7 @@ def get_print_css(orientation="세로"):
         td {{
             border: 1px solid #ccc; padding: 6px 4px; text-align: center;
             vertical-align: middle !important; word-wrap: break-word;
-            font-size: 10pt; color: black;
+            font-size: 10pt; color: black; line-height: 1.3 !important;
         }}
 
         .daily-table td.name-cell {{
@@ -54,12 +55,14 @@ def get_print_css(orientation="세로"):
 
         .weekly-name {{
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            font-size: 9pt; letter-spacing: -0.6px; margin-bottom: 3px;
+            font-size: 9.5pt; letter-spacing: -0.4px; margin-bottom: 4px; line-height: 1.3 !important;
         }}
 
-        /* ✅ 화면(Screen)에서만 적용: 인쇄용 전체 표를 숨김 */
+        /* ✅ 화면(Screen)에서만 적용: 스트림릿 하단 깃허브 프로필 및 상단 메뉴 숨기기 */
         @media screen {{
             .print-only {{ display: none !important; }}
+            footer {{ display: none !important; }} 
+            header {{ display: none !important; }} 
         }}
 
         /* 🖨️ 인쇄(Print) 시 적용 로직 */
@@ -67,35 +70,40 @@ def get_print_css(orientation="세로"):
             div[role="tablist"], header, footer, [data-testid="stSidebar"], [data-testid="stHeader"],
             .stButton, .stDateInput, .stTextInput, .stCheckbox {{ display: none !important; }}
             .no-print {{ display: none !important; }}
-            .block-container {{ padding: 0 !important; max-width: 100% !important; }}
             .report-view {{ border: none !important; padding: 0 !important; margin: 0 !important; }}
             
-            /* ✅ 인쇄 시 스트림릿 스크롤 표를 숨기고, 인쇄용 전체 표를 보여줌 */
+            /* 스트림릿 기본 스크롤 박스 제한 해제 */
+            html, body, .stApp, [data-testid="stAppViewContainer"], .main, .block-container, [data-testid="stVerticalBlock"] {{
+                height: auto !important; min-height: auto !important; overflow: visible !important;
+                position: static !important; padding: 0 !important; max-width: 100% !important;
+            }}
+            
             [data-testid="stDataFrame"] {{ display: none !important; }}
             .print-only {{ display: block !important; }}
             
-            /* 종이 여백 극한 최소화 (상하 8mm, 좌우 5mm) */
-            @page {{ size: {page_size}; margin: 8mm 5mm; }}
+            /* 🚨 핵심: 가로 잘림 방지를 위해 좌우 여백을 12mm로 넉넉하게 확보 */
+            @page {{ size: {page_size}; margin: 12mm 12mm; }}
 
-            h2 {{ font-size: 12pt !important; margin-bottom: 5px !important; padding-bottom: 2px !important; }}
+            h2 {{ font-size: 14pt !important; margin-bottom: 10px !important; padding-bottom: 2px !important; }}
 
-            table {{ font-size: 7.5pt !important; color: black; border: 1px solid black !important; margin-bottom: 5px !important; page-break-inside: auto; }}
+            /* 🚨 핵심: 글씨 크기 10pt 복구 및 여백 확보 */
+            table {{ font-size: 10pt !important; color: black; border: 1px solid black !important; margin-bottom: 10px !important; page-break-inside: auto; }}
             tr {{ page-break-inside: avoid; page-break-after: auto; }}
             th, td {{ border: 1px solid black !important; color: black !important; }}
             
-            /* 제목칸(th) 높이 축소 및 8pt 유지 */
-            th {{ background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 8pt !important; padding: 4px 2px !important; }}
+            /* 제목칸(th) 크기 및 여유 확보 */
+            th {{ background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10pt !important; padding: 8px 4px !important; }}
             .no-bg-th {{ background-color: white !important; }}
 
-            /* 데이터칸(td) 위아래 여백 2px로 축소, 줄간격 1.0 */
-            td {{ padding: 2px 1px !important; line-height: 1.0 !important; }}
+            /* 데이터칸(td) 위아래 여백 6px, 줄간격 1.3으로 늘려 세로 길이 30% 연장 */
+            td {{ padding: 6px 4px !important; line-height: 1.3 !important; }}
             
-            /* 학생 이름 글자 크기 최소화 (7.5pt ~ 7pt) 및 자간 축소 */
-            .daily-table td.name-cell {{ font-size: 7.5pt !important; letter-spacing: -0.5px !important; }}
-            .weekly-name {{ font-size: 7pt !important; margin-bottom: 1px !important; letter-spacing: -0.5px !important; }} 
+            /* 학생 이름 글자 크기 10pt, 자간 여유 확보 */
+            .daily-table td.name-cell {{ font-size: 10pt !important; letter-spacing: -0.2px !important; }}
+            .weekly-name {{ font-size: 9.5pt !important; margin-bottom: 3px !important; letter-spacing: -0.2px !important; }} 
             
-            /* 체크박스 소형화 (10px) */
-            .check-box {{ width: 10px !important; height: 10px !important; }}
+            /* 체크박스 정상 크기(14px) 복원 */
+            .check-box {{ width: 14px !important; height: 14px !important; }}
         }}
     </style>
     """
@@ -158,7 +166,6 @@ def format_student_name(name, school, grade, pause_mark=""):
 
 # --- [5. HTML 생성 함수] ---
 def generate_total_list_html(df):
-    """✅ 인쇄 전용 '전체 학생 목록' HTML (스크롤 없이 전부 펼쳐짐)"""
     html = "<table style='width:100%;'><thead><tr>"
     cols = [COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]
     widths = {COL_NAME: "15%", COL_SCHOOL: "25%", COL_GRADE: "10%", COL_DAYS: "20%", COL_PERIOD: "20%", COL_STATUS: "10%"}
@@ -283,17 +290,14 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
-    st.markdown('<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: ⋮ -> Print </div>', unsafe_allow_html=True)
+    st.markdown('<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: 우측 상단 ⋮(메뉴) ➜ Print 선택</div>', unsafe_allow_html=True)
 
     tab_list = st.tabs(["전체 목록", "1. 학년별 명단", "2. 수업시간 명단", "3. 출석부", "4. 학교별 명단"])
 
     with tab_list[0]:
         st.markdown("<h2 style='font-size:16pt;'>등록 학생 목록</h2>", unsafe_allow_html=True)
         if not df.empty: 
-            # 1. 화면 전용: 인터랙티브 스트림릿 표 (정렬/스크롤 가능)
             st.dataframe(df[[COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]], use_container_width=True, hide_index=True)
-            
-            # 2. 인쇄 전용: 잘리지 않고 전체 인쇄되는 HTML 표 (화면에선 안 보임)
             total_list_html = generate_total_list_html(df)
             st.markdown(f"<div class='print-only'>{total_list_html}</div>", unsafe_allow_html=True)
             
@@ -315,4 +319,3 @@ def main():
             st.markdown(f"<div class='report-view'>{generate_table4(df, True, m4)}</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__": main()
-
