@@ -214,7 +214,7 @@ def generate_table4(df, show_grade, month_text):
 def main():
     st.set_page_config(
         page_title=PAGE_TITLE,
-        page_icon="r_icon_bg1.png", 
+        page_icon="icon.png", 
         layout="wide"
     )
 
@@ -248,3 +248,4 @@ def main():
             st.markdown(f"<div class='report-view'>{generate_table4(df, True, m4)}</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__": main()
+
