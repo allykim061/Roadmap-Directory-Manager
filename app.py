@@ -290,7 +290,7 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
-    st.markdown('<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: 우측 상단 ⋮ ➜ Print 선택</div>', unsafe_allow_html=True)
+    st.markdown('<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: 우측 상단 ⋮(메뉴) ➜ Print 선택</div>', unsafe_allow_html=True)
 
     tab_list = st.tabs(["전체 목록", "1. 학년별 명단", "2. 수업시간 명단", "3. 출석부", "4. 학교별 명단"])
 
@@ -319,4 +319,3 @@ def main():
             st.markdown(f"<div class='report-view'>{generate_table4(df, True, m4)}</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__": main()
-
