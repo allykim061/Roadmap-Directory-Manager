@@ -16,7 +16,7 @@ COL_ID, COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS = (
 GRADE_ORDER = ["초1", "초2", "초3", "초4", "초5", "초6", "중1", "중2", "중3", "고1", "고2", "고3"]
 WEEKDAY_ORDER = ["월", "화", "수", "목", "금", "토", "일"]
 
-# --- [2. 인쇄 전용 CSS (극한 압축 + 워터마크 제거)] ---
+# --- [2. 인쇄 전용 CSS (극한 압축 + 전체목록 분리 모드)] ---
 def get_print_css(orientation="세로"):
     page_size = "A4 portrait" if orientation == "세로" else "A4 landscape"
 
@@ -57,11 +57,9 @@ def get_print_css(orientation="세로"):
             font-size: 9pt; letter-spacing: -0.6px; margin-bottom: 3px;
         }}
 
-        /* ✅ 화면(Screen)에서만 적용: 스트림릿 하단 깃허브 프로필 및 상단 메뉴 숨기기 */
+        /* ✅ 화면(Screen)에서만 적용: 인쇄용 전체 표를 숨김 */
         @media screen {{
             .print-only {{ display: none !important; }}
-            footer {{ display: none !important; }} /* 하단 깃허브 워터마크 제거 */
-            header {{ display: none !important; }} /* 상단 깃허브 아이콘/메뉴 제거 */
         }}
 
         /* 🖨️ 인쇄(Print) 시 적용 로직 */
@@ -69,21 +67,14 @@ def get_print_css(orientation="세로"):
             div[role="tablist"], header, footer, [data-testid="stSidebar"], [data-testid="stHeader"],
             .stButton, .stDateInput, .stTextInput, .stCheckbox {{ display: none !important; }}
             .no-print {{ display: none !important; }}
+            .block-container {{ padding: 0 !important; max-width: 100% !important; }}
             .report-view {{ border: none !important; padding: 0 !important; margin: 0 !important; }}
             
-            /* 스트림릿 기본 스크롤 박스 제한 해제 */
-            html, body, .stApp, [data-testid="stAppViewContainer"], .main, .block-container, [data-testid="stVerticalBlock"] {{
-                height: auto !important;
-                min-height: auto !important;
-                overflow: visible !important;
-                position: static !important;
-                padding: 0 !important;
-                max-width: 100% !important;
-            }}
-            
+            /* ✅ 인쇄 시 스트림릿 스크롤 표를 숨기고, 인쇄용 전체 표를 보여줌 */
             [data-testid="stDataFrame"] {{ display: none !important; }}
             .print-only {{ display: block !important; }}
             
+            /* 종이 여백 극한 최소화 (상하 8mm, 좌우 5mm) */
             @page {{ size: {page_size}; margin: 8mm 5mm; }}
 
             h2 {{ font-size: 12pt !important; margin-bottom: 5px !important; padding-bottom: 2px !important; }}
@@ -92,14 +83,18 @@ def get_print_css(orientation="세로"):
             tr {{ page-break-inside: avoid; page-break-after: auto; }}
             th, td {{ border: 1px solid black !important; color: black !important; }}
             
+            /* 제목칸(th) 높이 축소 및 8pt 유지 */
             th {{ background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 8pt !important; padding: 4px 2px !important; }}
             .no-bg-th {{ background-color: white !important; }}
 
+            /* 데이터칸(td) 위아래 여백 2px로 축소, 줄간격 1.0 */
             td {{ padding: 2px 1px !important; line-height: 1.0 !important; }}
             
+            /* 학생 이름 글자 크기 최소화 (7.5pt ~ 7pt) 및 자간 축소 */
             .daily-table td.name-cell {{ font-size: 7.5pt !important; letter-spacing: -0.5px !important; }}
             .weekly-name {{ font-size: 7pt !important; margin-bottom: 1px !important; letter-spacing: -0.5px !important; }} 
             
+            /* 체크박스 소형화 (10px) */
             .check-box {{ width: 10px !important; height: 10px !important; }}
         }}
     </style>
@@ -163,6 +158,7 @@ def format_student_name(name, school, grade, pause_mark=""):
 
 # --- [5. HTML 생성 함수] ---
 def generate_total_list_html(df):
+    """✅ 인쇄 전용 '전체 학생 목록' HTML (스크롤 없이 전부 펼쳐짐)"""
     html = "<table style='width:100%;'><thead><tr>"
     cols = [COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]
     widths = {COL_NAME: "15%", COL_SCHOOL: "25%", COL_GRADE: "10%", COL_DAYS: "20%", COL_PERIOD: "20%", COL_STATUS: "10%"}
@@ -294,7 +290,10 @@ def main():
     with tab_list[0]:
         st.markdown("<h2 style='font-size:16pt;'>등록 학생 목록</h2>", unsafe_allow_html=True)
         if not df.empty: 
+            # 1. 화면 전용: 인터랙티브 스트림릿 표 (정렬/스크롤 가능)
             st.dataframe(df[[COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]], use_container_width=True, hide_index=True)
+            
+            # 2. 인쇄 전용: 잘리지 않고 전체 인쇄되는 HTML 표 (화면에선 안 보임)
             total_list_html = generate_total_list_html(df)
             st.markdown(f"<div class='print-only'>{total_list_html}</div>", unsafe_allow_html=True)
             
