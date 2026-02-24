@@ -16,7 +16,7 @@ COL_ID, COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS = (
 GRADE_ORDER = ["초1", "초2", "초3", "초4", "초5", "초6", "중1", "중2", "중3", "고1", "고2", "고3"]
 WEEKDAY_ORDER = ["월", "화", "수", "목", "금", "토", "일"]
 
-# --- [2. 인쇄 전용 CSS (가독성 최우선 10pt + 여백/행간 30% 연장)] ---
+# --- [2. 인쇄 전용 CSS (메뉴 복구 + 하단 워터마크만 제거)] ---
 def get_print_css(orientation="세로"):
     page_size = "A4 portrait" if orientation == "세로" else "A4 landscape"
 
@@ -32,7 +32,6 @@ def get_print_css(orientation="세로"):
         .date-footer {{ margin-top: 10px; text-align: right; font-size: 11pt; color: #666; }}
         .check-box {{ display: inline-block; width: 14px; height: 14px; border: 1px solid #000; vertical-align: middle; }}
 
-        /* 표 전체 가로폭 제한을 걸어 잘림 방지 */
         table {{ width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 15px; }}
 
         th {{
@@ -58,11 +57,10 @@ def get_print_css(orientation="세로"):
             font-size: 9.5pt; letter-spacing: -0.4px; margin-bottom: 4px; line-height: 1.3 !important;
         }}
 
-        /* ✅ 화면(Screen)에서만 적용: 스트림릿 하단 깃허브 프로필 및 상단 메뉴 숨기기 */
+        /* ✅ 화면(Screen)에서만 적용: 스트림릿 하단 깃허브 프로필(footer)만 숨기기 */
         @media screen {{
             .print-only {{ display: none !important; }}
             footer {{ display: none !important; }} 
-            header {{ display: none !important; }} 
         }}
 
         /* 🖨️ 인쇄(Print) 시 적용 로직 */
@@ -72,7 +70,6 @@ def get_print_css(orientation="세로"):
             .no-print {{ display: none !important; }}
             .report-view {{ border: none !important; padding: 0 !important; margin: 0 !important; }}
             
-            /* 스트림릿 기본 스크롤 박스 제한 해제 */
             html, body, .stApp, [data-testid="stAppViewContainer"], .main, .block-container, [data-testid="stVerticalBlock"] {{
                 height: auto !important; min-height: auto !important; overflow: visible !important;
                 position: static !important; padding: 0 !important; max-width: 100% !important;
@@ -81,28 +78,22 @@ def get_print_css(orientation="세로"):
             [data-testid="stDataFrame"] {{ display: none !important; }}
             .print-only {{ display: block !important; }}
             
-            /* 🚨 핵심: 가로 잘림 방지를 위해 좌우 여백을 12mm로 넉넉하게 확보 */
             @page {{ size: {page_size}; margin: 12mm 12mm; }}
 
             h2 {{ font-size: 14pt !important; margin-bottom: 10px !important; padding-bottom: 2px !important; }}
 
-            /* 🚨 핵심: 글씨 크기 10pt 복구 및 여백 확보 */
             table {{ font-size: 10pt !important; color: black; border: 1px solid black !important; margin-bottom: 10px !important; page-break-inside: auto; }}
             tr {{ page-break-inside: avoid; page-break-after: auto; }}
             th, td {{ border: 1px solid black !important; color: black !important; }}
             
-            /* 제목칸(th) 크기 및 여유 확보 */
             th {{ background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10pt !important; padding: 8px 4px !important; }}
             .no-bg-th {{ background-color: white !important; }}
 
-            /* 데이터칸(td) 위아래 여백 6px, 줄간격 1.3으로 늘려 세로 길이 30% 연장 */
             td {{ padding: 6px 4px !important; line-height: 1.3 !important; }}
             
-            /* 학생 이름 글자 크기 10pt, 자간 여유 확보 */
             .daily-table td.name-cell {{ font-size: 10pt !important; letter-spacing: -0.2px !important; }}
             .weekly-name {{ font-size: 9.5pt !important; margin-bottom: 3px !important; letter-spacing: -0.2px !important; }} 
             
-            /* 체크박스 정상 크기(14px) 복원 */
             .check-box {{ width: 14px !important; height: 14px !important; }}
         }}
     </style>
@@ -290,7 +281,7 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
-    st.markdown('<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: 우측 상단 ⋮(메뉴) ➜ Print 선택</div>', unsafe_allow_html=True)
+    st.markdown('<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: 우측 상단 ⋮ ➜ Print 선택</div>', unsafe_allow_html=True)
 
     tab_list = st.tabs(["전체 목록", "1. 학년별 명단", "2. 수업시간 명단", "3. 출석부", "4. 학교별 명단"])
 
