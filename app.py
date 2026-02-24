@@ -76,7 +76,8 @@ def load_data():
 
         if not df.empty:
             df.columns = df.columns.str.replace(" ", "")
-            df[COL_PERIOD] = pd.to_numeric(df[COL_PERIOD], errors="coerce").fillna(0).astype(int)
+            # ✅ 수정: 수업교시를 숫자가 아닌 문자로 처리하고 공백 제거 (다중 교시 인식을 위해)
+            df[COL_PERIOD] = df[COL_PERIOD].astype(str).str.replace(" ", "")
             df[COL_STATUS] = df[COL_STATUS].astype(str).str.replace(" ", "")
             df[COL_DAYS] = df[COL_DAYS].astype(str).str.replace(" ", "")
         return df
@@ -84,8 +85,13 @@ def load_data():
         st.error(f"데이터 로드 실패: {e}")
         return pd.DataFrame()
 
+# ✅ 요일 검사 함수
 def is_on_day(day_string, target_day):
     return target_day in day_string.split(',')
+
+# ✅ 새로 추가: 다중 교시 검사 함수 (예: "1,2" 에서 1이 포함되어 있는지 확인)
+def is_in_period(period_string, target_period):
+    return str(target_period) in period_string.split(',')
 
 def format_student_name(name, school, grade, pause_mark=""):
     s_str, g_str = str(school).strip(), str(grade).strip()
@@ -111,7 +117,15 @@ def generate_table2(df, month_text):
     df_active = df[df[COL_STATUS] == "재원"].copy()
     html = f"<h2 class='no-print' style='text-align:center; font-size:16pt;'>{month_text} 반편성 내역</h2>"
     target_days = ["월", "화", "수", "목", "금"]
-    periods = sorted([p for p in df_active[COL_PERIOD].unique() if p > 0])
+    
+    # ✅ 다중 교시(예: "1,2")를 고려하여 존재하는 모든 교시 번호 추출
+    periods_set = set()
+    for p_str in df_active[COL_PERIOD]:
+        for p in str(p_str).split(','):
+            if p.isdigit() and int(p) > 0:
+                periods_set.add(int(p))
+    periods = sorted(list(periods_set)) if periods_set else [1, 2, 3]
+
     for p in periods:
         html += "<div class='a4-print-box'><table class='weekly-table'><thead><tr>"
         th_base = "text-align:center; vertical-align:middle;"
@@ -119,12 +133,16 @@ def generate_table2(df, month_text):
         for d in target_days: html += f"<th style='width:15%; {th_base}'>{d}</th>"
         html += f"<th style='width:15%; {th_base}'>비고</th></tr></thead><tbody>"
         html += f"<tr><td style='font-weight:bold; font-size:12pt;'>{p}교시</td>"
+        
         for d in target_days:
+            # ✅ 요일뿐만 아니라 '교시'도 개별 항목으로 정확히 매칭되도록 수정
             day_mask = df_active[COL_DAYS].apply(lambda x: is_on_day(x, d))
-            students = df_active[(df_active[COL_PERIOD] == p) & day_mask].sort_values(COL_NAME)
+            period_mask = df_active[COL_PERIOD].apply(lambda x: is_in_period(x, p))
+            
+            students = df_active[period_mask & day_mask].sort_values(COL_NAME)
             student_list = [f"<div class='weekly-name'>{format_student_name(r[COL_NAME], r[COL_SCHOOL], r[COL_GRADE])}</div>" for _, r in students.iterrows()]
             html += f"<td style='vertical-align:top; text-align:center; padding:10px 5px;'>{''.join(student_list)}</td>"
-        # ✅ (수정됨) {month_text}를 중괄호로 감싸서 변수값이 나오도록 수정
+            
         html += f"<td></td></tr></tbody></table><div class='date-footer'>{month_text}</div></div>"
     return html
 
@@ -133,12 +151,17 @@ def generate_table3(df, target_date, include_paused):
     day_mask = df[COL_DAYS].apply(lambda x: is_on_day(x, weekday))
     df_day = df[day_mask].copy()
     if not include_paused: df_day = df_day[df_day[COL_STATUS] == "재원"]
+    
     p_data = {1: [], 2: [], 3: []}
     for p in [1, 2, 3]:
-        df_p = df_day[df_day[COL_PERIOD] == p].sort_values(COL_NAME)
+        # ✅ '==" 으로 비교하던 것을, 포함되어 있는지 확인하는 함수로 변경
+        period_mask = df_day[COL_PERIOD].apply(lambda x: is_in_period(x, p))
+        df_p = df_day[period_mask].sort_values(COL_NAME)
+        
         for _, row in df_p.iterrows():
             pause = " (휴)" if row[COL_STATUS] == "휴원" else ""
             p_data[p].append(format_student_name(row[COL_NAME], row[COL_SCHOOL], row[COL_GRADE], pause))
+            
     max_rows = max(len(p_data[1]), len(p_data[2]), len(p_data[3]))
     html = f"<h2 style='text-align:left; border-bottom:2px solid black; padding-bottom:5px; font-size:16pt;'>{target_date.month}-{target_date.day} {weekday}</h2>"
     html += "<table class='daily-table'><thead><tr>"
