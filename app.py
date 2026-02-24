@@ -25,12 +25,37 @@ def get_print_css(orientation="세로"):
         body, .stApp {{ font-family: 'Pretendard', sans-serif !important; }}
         .report-view {{ border: 1px solid #ccc; padding: 20px; background: white; margin-top: 20px; color: black; }}
 
-        .a4-print-box {{ margin-bottom: 40px; }}
+        .a4-print-box {{ margin-bottom: 30px; page-break-after: always; }}
+        .a4-print-box:last-child {{ page-break-after: auto; }}
+        
         .date-footer {{ margin-top: 10px; text-align: right; font-size: 11pt; color: #666; }}
         .check-box {{ display: inline-block; width: 14px; height: 14px; border: 1px solid #000; vertical-align: middle; }}
 
+        /* ✅ 수정 1: 모든 표 기본 틀 (비율 초과 방지) */
         table {{ width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 15px; }}
-        th, td {{ border: 1px solid #ddd; padding: 6px 4px; text-align: center; vertical-align: middle; word-wrap: break-word; }}
+        
+        /* ✅ 수정 2: 가장 위 행(제목) 강제 고정 */
+        th {{ 
+            border: 1px solid #ccc !important; 
+            padding: 8px 4px !important; 
+            text-align: center !important; 
+            vertical-align: middle !important; /* 강제 상하 가운데 정렬 */
+            white-space: nowrap !important; /* 강제 한 줄 유지 */
+            word-break: keep-all !important; 
+            font-size: 10pt !important; /* 글씨 크기 10pt 고정 */
+            background-color: #f0f0f0 !important; /* 화면/인쇄 모두 회색 배경 */
+            color: black !important;
+        }}
+        
+        td {{ 
+            border: 1px solid #ccc; 
+            padding: 6px 4px; 
+            text-align: center; 
+            vertical-align: middle !important; /* 데이터도 강제 가운데 정렬 */
+            word-wrap: break-word; 
+            font-size: 10pt; 
+            color: black;
+        }}
 
         .daily-table td.name-cell {{
             text-align: left; padding-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -50,11 +75,10 @@ def get_print_css(orientation="세로"):
             .block-container {{ padding: 0 !important; max-width: 100% !important; }}
             .report-view {{ border: none !important; padding: 0 !important; margin: 0 !important; }}
 
-            .a4-print-box {{ display: flex !important; flex-direction: column !important; min-height: 25cm !important; page-break-after: always; }}
             .date-footer {{ margin-top: auto !important; padding-top: 20px !important; color: black; }}
 
-            table {{ font-size: 11pt; color: black; border: 1px solid black; }}
-            th, td {{ border: 1px solid black !important; color: black; }}
+            table {{ font-size: 10pt !important; color: black; border: 1px solid black !important; }}
+            th, td {{ border: 1px solid black !important; color: black !important; }}
             
             th {{ background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
             .no-bg-th {{ background-color: white !important; }} 
@@ -76,7 +100,6 @@ def load_data():
 
         if not df.empty:
             df.columns = df.columns.str.replace(" ", "")
-            # ✅ 수정: 수업교시를 숫자가 아닌 문자로 처리하고 공백 제거 (다중 교시 인식을 위해)
             df[COL_PERIOD] = df[COL_PERIOD].astype(str).str.replace(" ", "")
             df[COL_STATUS] = df[COL_STATUS].astype(str).str.replace(" ", "")
             df[COL_DAYS] = df[COL_DAYS].astype(str).str.replace(" ", "")
@@ -85,11 +108,9 @@ def load_data():
         st.error(f"데이터 로드 실패: {e}")
         return pd.DataFrame()
 
-# ✅ 요일 검사 함수
 def is_on_day(day_string, target_day):
     return target_day in day_string.split(',')
 
-# ✅ 새로 추가: 다중 교시 검사 함수 (예: "1,2" 에서 1이 포함되어 있는지 확인)
 def is_in_period(period_string, target_period):
     return str(target_period) in period_string.split(',')
 
@@ -108,7 +129,7 @@ def generate_table1(df, show_school, month_text):
         group = df_active[df_active[COL_GRADE] == grade]
         if group.empty: continue
         names = [f"{r[COL_NAME]}({r[COL_SCHOOL]})" if show_school else r[COL_NAME] for _, r in group.iterrows()]
-        html += f"<tr><th>{grade}</th><td style='text-align:left; padding-left:10px;'>{', '.join(names)}</td><td>{len(group)}</td></tr>"
+        html += f"<tr><th>{grade}</th><td style='text-align:left !important; padding-left:10px !important;'>{', '.join(names)}</td><td>{len(group)}</td></tr>"
         total += len(group)
     html += f"<tr><th>합계</th><td></td><td>{total}</td></tr></tbody></table>"
     return html
@@ -118,7 +139,6 @@ def generate_table2(df, month_text):
     html = f"<h2 class='no-print' style='text-align:center; font-size:16pt;'>{month_text} 반편성 내역</h2>"
     target_days = ["월", "화", "수", "목", "금"]
     
-    # ✅ 다중 교시(예: "1,2")를 고려하여 존재하는 모든 교시 번호 추출
     periods_set = set()
     for p_str in df_active[COL_PERIOD]:
         for p in str(p_str).split(','):
@@ -128,20 +148,18 @@ def generate_table2(df, month_text):
 
     for p in periods:
         html += "<div class='a4-print-box'><table class='weekly-table'><thead><tr>"
-        th_base = "text-align:center; vertical-align:middle;"
-        html += f"<th style='width:10%; {th_base}'>수업시간</th>"
-        for d in target_days: html += f"<th style='width:15%; {th_base}'>{d}</th>"
-        html += f"<th style='width:15%; {th_base}'>비고</th></tr></thead><tbody>"
-        html += f"<tr><td style='font-weight:bold; font-size:12pt;'>{p}교시</td>"
+        html += "<th style='width:10%;'>수업시간</th>"
+        for d in target_days: html += f"<th style='width:15%;'>{d}</th>"
+        html += "<th style='width:15%;'>비고</th></tr></thead><tbody>"
+        html += f"<tr><td style='font-weight:bold; font-size:10pt;'>{p}교시</td>"
         
         for d in target_days:
-            # ✅ 요일뿐만 아니라 '교시'도 개별 항목으로 정확히 매칭되도록 수정
             day_mask = df_active[COL_DAYS].apply(lambda x: is_on_day(x, d))
             period_mask = df_active[COL_PERIOD].apply(lambda x: is_in_period(x, p))
             
             students = df_active[period_mask & day_mask].sort_values(COL_NAME)
             student_list = [f"<div class='weekly-name'>{format_student_name(r[COL_NAME], r[COL_SCHOOL], r[COL_GRADE])}</div>" for _, r in students.iterrows()]
-            html += f"<td style='vertical-align:top; text-align:center; padding:10px 5px;'>{''.join(student_list)}</td>"
+            html += f"<td style='vertical-align:top !important; text-align:center; padding:10px 5px;'>{''.join(student_list)}</td>"
             
         html += f"<td></td></tr></tbody></table><div class='date-footer'>{month_text}</div></div>"
     return html
@@ -154,7 +172,6 @@ def generate_table3(df, target_date, include_paused):
     
     p_data = {1: [], 2: [], 3: []}
     for p in [1, 2, 3]:
-        # ✅ '==" 으로 비교하던 것을, 포함되어 있는지 확인하는 함수로 변경
         period_mask = df_day[COL_PERIOD].apply(lambda x: is_in_period(x, p))
         df_p = df_day[period_mask].sort_values(COL_NAME)
         
@@ -165,9 +182,12 @@ def generate_table3(df, target_date, include_paused):
     max_rows = max(len(p_data[1]), len(p_data[2]), len(p_data[3]))
     html = f"<h2 style='text-align:left; border-bottom:2px solid black; padding-bottom:5px; font-size:16pt;'>{target_date.month}-{target_date.day} {weekday}</h2>"
     html += "<table class='daily-table'><thead><tr>"
+    
+    # ✅ 수정 3: 가로 폭 비율을 합계 99%로 맞춰 찌그러짐 방지 (18+5+5+5=33% x 3개)
     for p in [1, 2, 3]:
-        html += f"<th style='width:20%; font-size:10pt;'>{p}교시</th><th style='width:5%;'>출석</th><th style='width:5%;'>숙제</th><th style='width:5%;'>배정</th>"
+        html += f"<th style='width:18%;'>{p}교시</th><th style='width:5%;'>출석</th><th style='width:5%;'>숙제</th><th style='width:5%;'>배정</th>"
     html += "</tr></thead><tbody>"
+    
     for i in range(max_rows):
         html += "<tr>"
         for p in [1, 2, 3]:
@@ -185,7 +205,7 @@ def generate_table4(df, show_grade, month_text):
     for school in unique_schools:
         group = df_active[df_active[COL_SCHOOL] == school]
         names = [f"{r[COL_NAME]}({r[COL_GRADE]})" if show_grade else r[COL_NAME] for _, r in group.iterrows()]
-        html += f"<tr><th>{school}</th><td style='text-align:left; padding-left:10px;'>{', '.join(names)}</td><td>{len(group)}</td></tr>"
+        html += f"<tr><th>{school}</th><td style='text-align:left !important; padding-left:10px !important;'>{', '.join(names)}</td><td>{len(group)}</td></tr>"
         total += len(group)
     html += f"<tr><th>합계</th><td></td><td>{total}</td></tr></tbody></table>"
     return html
@@ -194,7 +214,7 @@ def generate_table4(df, show_grade, month_text):
 def main():
     st.set_page_config(
         page_title=PAGE_TITLE,
-        page_icon="icon.png",
+        page_icon="r_icon_bg1.png", 
         layout="wide"
     )
 
