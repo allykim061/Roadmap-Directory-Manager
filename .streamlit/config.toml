@@ -1,0 +1,9 @@
+[theme]
+# 메인 포인트 컬러 (체크박스, 선택된 탭, 버튼 등)
+primaryColor = "#0BA299"
+
+
+# 배경색 (선택 사항)
+# backgroundColor = "#ffffff"
+# secondaryBackgroundColor = "#f0f2f6"
+# textColor = "#262730"
