@@ -287,16 +287,35 @@ def generate_table2(df, month_text):
         html += "<th style='width:10%;'>수업시간</th>"
         for d in target_days: html += f"<th style='width:20%;'>{d}</th>"
         html += "<th style='width:10%;'>비고</th></tr></thead><tbody>"
-        html += f"<tr><td style='font-weight:bold;'>{p}교시</td>"
+        html += f"<tr><td style='font-weight:bold; text-align:center;'>{p}교시</td>"
         
         for d in target_days:
             condition = df_active.apply(lambda row: match_attendance(row[COL_DAYS], row[COL_PERIOD], d, p), axis=1)
+            
+            # ✅ 학생 이름 가나다순 정렬
             students = df_active[condition].sort_values(COL_NAME)
-            student_list = [f"<div class='weekly-name'>{format_student_name(r[COL_NAME], r[COL_SCHOOL], r[COL_GRADE])}</div>" for _, r in students.iterrows()]
-            html += f"<td style='vertical-align:top !important; text-align:center; padding:5px 2px;'>{''.join(student_list)}</td>"
+            
+            student_list = []
+            for _, r in students.iterrows():
+                # 학교와 학년 정보 조합 (예: 산의초 + 초1 -> 산의초1)
+                s_str, g_str = str(r[COL_SCHOOL]).strip(), str(r[COL_GRADE]).strip()
+                school_grade = s_str + (g_str[1:] if s_str and g_str and s_str[-1] == g_str[0] else g_str)
+                
+                # ✅ 학생과 (학교) 사이 한 칸 띄우고 강제 왼쪽 정렬 적용
+                student_list.append(f"<div class='weekly-name' style='text-align: left;'>{r[COL_NAME]} ({school_grade})</div>")
+            
+            # ✅ 구분선 없이 명단 맨 끝에 00명만 추가
+            if len(students) > 0:
+                count_html = f"<div class='weekly-name' style='text-align: left; font-weight: normal; margin-top: 2px;'>{len(students)}명</div>"
+            else:
+                count_html = ""
+                
+            # ✅ 셀 내부의 왼쪽 여백을 최소화(2px)하여 왼쪽 줄에 딱 붙게 처리
+            html += f"<td style='vertical-align:top !important; text-align:left !important; padding:5px 4px;'>{''.join(student_list)}{count_html}</td>"
             
         html += f"<td></td></tr></tbody></table><div class='date-footer'>{month_text}</div></div>"
     return html
+
 
 def generate_table3(df, target_date, include_paused):
     weekday = WEEKDAY_ORDER[target_date.weekday()]
