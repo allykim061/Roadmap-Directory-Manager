@@ -195,60 +195,55 @@ def generate_total_list_html(df):
 def generate_table1(df, show_school, show_count, month_text):
     df_active = df[df[COL_STATUS] == "재원"].copy()
     html = f"<h2 style='text-align:center; font-size:16pt;'>학년별 명단 ({month_text})</h2>"
-    html += "<table><thead><tr><th style='width:15%'>학년</th><th>학생 명단</th><th style='width:10%'>인원수</th></tr></thead><tbody>"
-    
+    html += "<table style='font-size: 4pt;'><thead><tr><th style='width:15%'>학년</th><th>학생 명단</th><th style='width:15%'>인원수</th></tr></thead><tbody>"
+
     total = 0
     for grade in GRADE_ORDER:
         group = df_active[df_active[COL_GRADE] == grade]
         if group.empty: continue
-        
-        # 학교 가나다순, 이름 가나다순 정렬 적용
+
         group_sorted = group.sort_values(by=[COL_SCHOOL, COL_NAME])
-        
+
         if show_school or show_count:
             formatted_groups = []
             for school, school_group in group_sorted.groupby(COL_SCHOOL, sort=False):
                 names_list = school_group[COL_NAME].tolist()
                 names_str = " ".join(names_list)
                 count = len(names_list)
-                
-                # ✅ 【학교】[학생] 순서로 변경 및 괄호 모양 수정
+
                 school_text = f"【{school}】" if show_school else ""
                 count_text = f" {count}명" if (show_count and count >= 4) else ""
-                
+
                 if count == 1:
                     formatted_groups.append(f"{school_text}{names_str}{count_text}")
                 else:
                     formatted_groups.append(f"{school_text}[{names_str}]{count_text}")
-                    
+
             names_final_str = " ".join(formatted_groups)
         else:
-            # 둘 다 해제 시 괄호 없이 이름만 나열
             names_final_str = " ".join(group_sorted[COL_NAME].tolist())
-            
-        html += f"<tr><th>{grade}</th><td style='text-align:left !important; padding-left:10px !important;'>{names_final_str}</td><td>{len(group)}</td></tr>"
+
+        html += f"<tr><th>{grade}<td style='text-align:left !important; padding-left:10px !important; font-size: 11pt; line-height: 2;'>{names_final_str}</td><td>{len(group)}</td></tr>"
         total += len(group)
 
-    # --- [합계 칸에 주 1회 / 주 3회 학생 따로 요약해서 적기] ---
     df_active['days_count'] = df_active[COL_DAYS].apply(lambda x: len(split_days(x)))
-    
+
     summary_texts = []
-    
+
     def get_summary_str(count_target, label, is_show_school, is_show_count):
         df_target = df_active[df_active['days_count'] == count_target].sort_values(by=[COL_SCHOOL, COL_NAME])
         if df_target.empty: return ""
-        
+
         groups = []
         if is_show_school or is_show_count:
             for school, school_group in df_target.groupby(COL_SCHOOL, sort=False):
                 names_list = school_group[COL_NAME].tolist()
                 names_str = " ".join(names_list)
                 count = len(names_list)
-                
-                # ✅ 하단 요약 칸도 동일한 로직 적용
+
                 school_text = f"【{school}】" if is_show_school else ""
                 count_text = f" {count}명" if (is_show_count and count >= 4) else ""
-                
+
                 if count == 1:
                     groups.append(f"{school_text}{names_str}{count_text}")
                 else:
@@ -256,19 +251,19 @@ def generate_table1(df, show_school, show_count, month_text):
         else:
             for school, school_group in df_target.groupby(COL_SCHOOL, sort=False):
                 groups.append(" ".join(school_group[COL_NAME].tolist()))
-                
+
         return f"{label}: " + " ".join(groups)
 
     str_1day = get_summary_str(1, "주 1회", show_school, show_count)
     str_3day = get_summary_str(3, "주 3회", show_school, show_count)
-    
+
     if str_1day: summary_texts.append(str_1day)
     if str_3day: summary_texts.append(str_3day)
-    
+
     summary_final_str = "<br>".join(summary_texts)
 
     html += f"<tr><th>합계</th><td style='text-align:left !important; padding-left:10px !important;'>{summary_final_str}</td><td>{total}</td></tr></tbody></table>"
-    
+
     return html
 
 def generate_table2(df, month_text):
@@ -496,3 +491,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
