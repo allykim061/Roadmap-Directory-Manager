@@ -223,7 +223,7 @@ def generate_table1(df, show_school, show_count, month_text):
         else:
             names_final_str = " ".join(group_sorted[COL_NAME].tolist())
 
-        html += f"<tr><th>{grade}<td style='text-align:left !important; padding-top: 15px; padding-bottom: 15px; padding-left:2px !important; font-size: 10pt; line-height: 2;'>{names_final_str}</td><td>{len(group)}</td></tr>"
+        html += f"<tr><th>{grade}<td style='text-align:left !important; padding-top: 25px; padding-bottom: 25px; padding-left:2px !important; font-size: 10pt; line-height: 2;'>{names_final_str}</td><td>{len(group)}</td></tr>"
         total += len(group)
 
     df_active['days_count'] = df_active[COL_DAYS].apply(lambda x: len(split_days(x)))
@@ -491,5 +491,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
