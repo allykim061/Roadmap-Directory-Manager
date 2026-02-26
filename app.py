@@ -324,31 +324,104 @@ def generate_table3(df, target_date, include_paused):
 
     if not include_paused: df_day = df_day[df_day[COL_STATUS] == "재원"]
 
+    grade_sort_map = {g: i for i, g in enumerate(GRADE_ORDER)}
+
     p_data = {1: [], 2: [], 3: []}
+    p_counts = {1: 0, 2: 0, 3: 0} 
+
     for p in [1, 2, 3]:
         period_mask = df_day.apply(lambda row: match_attendance(row[COL_DAYS], row[COL_PERIOD], weekday, p), axis=1)
-        df_p = df_day[period_mask].sort_values(COL_NAME)
+        df_p = df_day[period_mask].copy()
+        
+        # 학년(초-중-고) -> 학교 가나다순 -> 이름 가나다순
+        df_p['_grade_order'] = df_p[COL_GRADE].map(grade_sort_map).fillna(999)
+        df_p = df_p.sort_values(['_grade_order', COL_SCHOOL, COL_NAME])
+        
+        last_level = None
         for _, row in df_p.iterrows():
+            grade = str(row[COL_GRADE]).strip()
+            
+            # 초/중/고 분류
+            if grade.startswith("초"): current_level = "초"
+            elif grade.startswith("중"): current_level = "중"
+            elif grade.startswith("고"): current_level = "고"
+            else: current_level = "기타"
+            
+            # 학교급이 바뀌면 빈 칸(간격) 추가
+            if last_level is not None and current_level != last_level:
+                p_data[p].append("") 
+            
             pause = " (휴)" if row[COL_STATUS] == "휴원" else ""
-            p_data[p].append(format_student_name(row[COL_NAME], row[COL_SCHOOL], row[COL_GRADE], pause))
+            s_str = str(row[COL_SCHOOL]).strip()
+            school_grade = s_str + (grade[1:] if s_str and grade and s_str[-1] == grade[0] else grade)
+            
+            p_data[p].append(f"{row[COL_NAME]} ({school_grade}){pause}")
+            p_counts[p] += 1 
+            
+            last_level = current_level
 
     max_rows = max(len(p_data[1]), len(p_data[2]), len(p_data[3])) if not df_day.empty else 0
 
     html = f"<h2 style='text-align:left; border-bottom:2px solid black; padding-bottom:5px;'>{target_date.month}-{target_date.day} {weekday}</h2>"
-    html += "<table class='daily-table'><thead><tr>"
+    
+    html += """
+    <style>
+        .table3-custom { border-collapse: collapse !important; width: 100%; }
+        .table3-custom th { 
+            border-top: 1px solid black !important; 
+            border-bottom: 2px solid black !important; 
+            border-left: 1px solid #ccc !important;
+            border-right: 1px solid #ccc !important;
+        }
+        .table3-custom tbody tr { 
+            border-top: 0px !important; 
+            border-bottom: 0px !important; 
+        }
+        .table3-custom tbody td { 
+            border-top: 0px !important; 
+            border-bottom: 0px !important; 
+            border-left: 1px solid #ccc !important;
+            border-right: 1px solid #ccc !important;
+        }
+        @media print {
+            .table3-custom th { border-color: black !important; }
+            .table3-custom tbody td { 
+                border-left: 1px solid black !important; 
+                border-right: 1px solid black !important; 
+            }
+        }
+    </style>
+    """
+    html += "<table class='table3-custom daily-table'><thead><tr>"
     
     for p in [1, 2, 3]:
         html += f"<th style='width:21%;'>{p}교시</th><th style='width:4%;'>출석</th><th style='width:4%;'>숙제</th><th style='width:4%;'>배정</th>"
     html += "</tr></thead><tbody>"
 
+    no_h_border = "border-top: 0px !important; border-bottom: 0px !important; border-left: 1px solid #ccc; border-right: 1px solid #ccc;"
+    # 표의 마지막 줄을 닫기 위한 테두리 스타일
+    bottom_border = "border-top: 0px !important; border-bottom: 2px solid black !important; border-left: 1px solid #ccc; border-right: 1px solid #ccc;"
+
     for i in range(max_rows):
-        html += "<tr>"
+        html += "<tr style='border-top: 0px !important; border-bottom: 0px !important;'>"
         for p in [1, 2, 3]:
             if i < len(p_data[p]):
-                html += f"<td class='name-cell'>{p_data[p][i]}</td><td><div class='check-box'></div></td><td><div class='check-box'></div></td><td></td>"
+                val = p_data[p][i]
+                if val == "":
+                    html += f"<td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td>"
+                else:
+                    html += f"<td class='name-cell' style='{no_h_border}'>{val}</td><td style='{no_h_border}'><div class='check-box'></div></td><td style='{no_h_border}'><div class='check-box'></div></td><td style='{no_h_border}'></td>"
             else:
-                html += "<td></td><td></td><td></td><td></td>"
+                html += f"<td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td>"
         html += "</tr>"
+        
+    # 명단 아래에 교시별 인원수 표기 및 표 하단 닫기 처리
+    html += "<tr style='border-top: 0px !important; border-bottom: 2px solid black !important;'>"
+    for p in [1, 2, 3]:
+        count_text = f"{p_counts[p]}명" if p_counts[p] > 0 else ""
+        html += f"<td class='name-cell' style='{bottom_border} font-weight: bold; text-align: right; padding-right: 10px; padding-top: 6px; padding-bottom: 6px;'>{count_text}</td><td style='{bottom_border}'></td><td style='{bottom_border}'></td><td style='{bottom_border}'></td>"
+    html += "</tr>"
+
     return html + "</tbody></table>"
 
 def generate_table4(df, show_grade, month_text):
