@@ -151,10 +151,12 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
     grade_sort_map = {g: i for i, g in enumerate(GRADE_ORDER)}
 
-    p_data = {1: [], 2: [], 3: []}
-    p_assign = {1: [], 2: [], 3: []}
-    p_counts = {1: 0, 2: 0, 3: 0}
+    # 각 교시별로 "행 모델"을 만든다: ("student"/"blank"/"summary", name_text, assign_letter)
+    rows = {1: [], 2: [], 3: []}
+
+    # 교시별 배정 알파벳 합계
     p_alpha_counts = {1: {}, 2: {}, 3: {}}
+    p_counts = {1: 0, 2: 0, 3: 0}
 
     for p in [1, 2, 3]:
         df_p = filter_students_for_day_period(df_day, weekday, p)
@@ -162,6 +164,8 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
         df_p = df_p.sort_values(["_grade_order", COL_SCHOOL, COL_NAME])
 
         last_level = None
+
+        # 1) 학생 행
         for _, row in df_p.iterrows():
             grade = str(row[COL_GRADE]).strip()
 
@@ -174,92 +178,109 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
             else:
                 current_level = "기타"
 
+            # 학교급 바뀌면 빈 줄(간격)
             if last_level is not None and current_level != last_level:
-                p_data[p].append("")
-                p_assign[p].append("")
+                rows[p].append(("blank", "", ""))
 
             pause = " (휴)" if row[COL_STATUS] == "휴원" else ""
             s_str = str(row[COL_SCHOOL]).strip()
             school_grade = s_str + (grade[1:] if s_str and grade and s_str[-1] == grade[0] else grade)
 
-            p_data[p].append(f"{row[COL_NAME]} ({school_grade}){pause}")
-            p_counts[p] += 1
+            name_text = f"{row[COL_NAME]} ({school_grade}){pause}"
 
             skey = get_student_key(row)
             akey = (p, skey)
             letter = sanitize_letter(assignment_map.get(akey, ""))
-            p_assign[p].append(letter)
+
+            rows[p].append(("student", name_text, letter))
+            p_counts[p] += 1
 
             if letter:
                 p_alpha_counts[p][letter] = p_alpha_counts[p].get(letter, 0) + 1
 
             last_level = current_level
 
-    max_rows = max(len(p_data[1]), len(p_data[2]), len(p_data[3])) if not df_day.empty else 0
+        # 2) 인원수 + 알파벳 합계를 "이름 칸"으로 내려붙이기
+        # 2) 인원수 + 알파벳 합계를 "이름 칸"으로 내려붙이기
+        if p_counts[p] > 0:
+            # 인원수와 알파벳 합계를 하나의 리스트에 차곡차곡 모읍니다.
+            summary_lines = [f"{p_counts[p]}명"]
+            
+            letters = sorted(p_alpha_counts[p].keys())
+            for L in letters:
+                summary_lines.append(f"{L} : {p_alpha_counts[p][L]}명")
+                
+            # 모은 글자들을 <br>(엔터)로 연결해서 하나의 덩어리로 만듭니다.
+            combined_summary = "<br>".join(summary_lines)
+            
+            # 표에는 합쳐진 덩어리를 딱 "한 줄(한 칸)"로만 추가합니다.
+            rows[p].append(("summary", combined_summary, ""))
 
-    html = f"<h2 style='text-align:left; border-bottom:2px solid black; padding-bottom:5px;'>{target_date.month}-{target_date.day} {weekday}</h2>"
+    # 3교시 중 가장 긴 길이에 맞춰 행 수 통일
+    max_rows = max(len(rows[1]), len(rows[2]), len(rows[3])) if not df_day.empty else 0
+    for p in [1, 2, 3]:
+        while len(rows[p]) < max_rows:
+            rows[p].append(("blank", "", ""))
+
+    html = (
+        f"<h2 style='text-align:left; border-bottom:2px solid black; padding-bottom:5px;'>"
+        f"{target_date.month}-{target_date.day} {weekday}</h2>"
+    )
 
     html += "<table class='table3-custom daily-table'><thead><tr>"
     for p in [1, 2, 3]:
-        html += f"<th style='width:21%;'>{p}교시</th><th style='width:4%;'>출석</th><th style='width:4%;'>숙제</th><th style='width:4%;'>배정</th>"
+        html += (
+            f"<th style='width:21%;'>{p}교시</th>"
+            f"<th style='width:4%;'>출석</th>"
+            f"<th style='width:4%;'>숙제</th>"
+            f"<th style='width:4%;'>배정</th>"
+        )
     html += "</tr></thead><tbody>"
 
-    no_h_border = "border-top: 0px !important; border-bottom: 0px !important; border-left: 1px solid #ccc; border-right: 1px solid #ccc;"
-    bottom_border = "border-top: 0px !important; border-bottom: 2px solid black !important; border-left: 1px solid #ccc; border-right: 1px solid #ccc;"
+    # 기본 테두리(가로선 제거 + 세로선만 유지)
+    cell_base = (
+        "border-top:0px !important; border-bottom:0px !important;"
+        "border-left:1px solid #ccc !important; border-right:1px solid #ccc !important;"
+    )
 
     for i in range(max_rows):
-        html += "<tr style='border-top: 0px !important; border-bottom: 0px !important;'>"
+        html += "<tr style='border-top:0px !important; border-bottom:0px !important;'>"
+
         for p in [1, 2, 3]:
-            if i < len(p_data[p]):
-                val = p_data[p][i]
-                letter = p_assign[p][i] if i < len(p_assign[p]) else ""
-                if val == "":
-                    html += f"<td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td>"
-                else:
-                    html += (
-                        f"<td class='name-cell' style='{no_h_border}'>{val}</td>"
-                        f"<td style='{no_h_border}'><div class='check-box'></div></td>"
-                        f"<td style='{no_h_border}'><div class='check-box'></div></td>"
-                        f"<td class='assign-cell' style='{no_h_border}'>{letter}</td>"
-                    )
-            else:
-                html += f"<td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td><td style='{no_h_border}'></td>"
+            rtype, name_text, letter = rows[p][i]
+
+            if rtype == "blank":
+                html += (
+                    f"<td style='{cell_base}'></td>"
+                    f"<td style='{cell_base}'></td>"
+                    f"<td style='{cell_base}'></td>"
+                    f"<td style='{cell_base}'></td>"
+                )
+
+            elif rtype == "student":
+                html += (
+                    f"<td class='name-cell' style='{cell_base}'>{name_text}</td>"
+                    f"<td style='{cell_base}'><div class='check-box'></div></td>"
+                    f"<td style='{cell_base}'><div class='check-box'></div></td>"
+                    f"<td class='assign-cell' style='{cell_base}'>{letter}</td>"
+                )
+
+            else:  # "summary" -> 합쳐진 텍스트를 출력
+                html += (
+                    # ✅ 수정: line-height(줄간격)를 1.2로 설정, 글자 간격 줄이기
+                    # 여러 줄이 들어가므로 vertical-align:top을 줘서 위로 딱 붙게 만듭니다.
+                    f"<td class='name-cell' style='{cell_base} text-align:left !important; padding-left:4px !important; padding-top:4px !important; padding-bottom:4px !important; vertical-align:top !important; line-height:0.6 !important;'>"
+                    f"{name_text}</td>"
+                    f"<td style='{cell_base}'></td>"
+                    f"<td style='{cell_base}'></td>"
+                    f"<td style='{cell_base}'></td>"
+                )
+
         html += "</tr>"
 
-    html += "<tr style='border-top: 0px !important; border-bottom: 2px solid black !important;'>"
-    for p in [1, 2, 3]:
-        count_text = f"{p_counts[p]}명" if p_counts[p] > 0 else ""
-        html += f"<td class='name-cell' style='{bottom_border} font-weight: bold; text-align: right; padding-right: 10px; padding-top: 6px; padding-bottom: 6px;'>{count_text}</td><td style='{bottom_border}'></td><td style='{bottom_border}'></td><td style='{bottom_border}'></td>"
-    html += "</tr>"
+    # 표 맨 아래 굵은 마감선(원하면 유지)
+    html += "<tr><td colspan='12' style='border-top:2px solid black !important;'></td></tr>"
 
-    all_letters = sorted(set(p_alpha_counts[1].keys()) | set(p_alpha_counts[2].keys()) | set(p_alpha_counts[3].keys()))
-
-    if not all_letters:
-        html += "<tr>"
-        for _ in range(12):
-            html += "<td style='border-top: 1px solid #ccc !important; border-bottom: 1px solid #ccc !important;'></td>"
-        html += "</tr>"
-    else:
-        for idx, L in enumerate(all_letters):
-            top_line = "border-top: 1px solid #ccc !important;" if idx == 0 else ""
-            bottom_line = "border-bottom: 1px solid #ccc !important;" if idx == len(all_letters) - 1 else ""
-            cell_style = f"{top_line}{bottom_line} border-left: 1px solid #ccc !important; border-right: 1px solid #ccc !important; text-align:left !important; padding:6px 6px; font-size:10pt;"
-
-            html += "<tr>"
-            cnt1 = p_alpha_counts[1].get(L, 0)
-            txt1 = f"<b>{L}</b> : {cnt1}명" if cnt1 > 0 else ""
-            html += f"<td style='{cell_style}'></td><td style='{cell_style}'></td><td style='{cell_style}'></td><td style='{cell_style}'>{txt1}</td>"
-
-            cnt2 = p_alpha_counts[2].get(L, 0)
-            txt2 = f"<b>{L}</b> : {cnt2}명" if cnt2 > 0 else ""
-            html += f"<td style='{cell_style}'></td><td style='{cell_style}'></td><td style='{cell_style}'></td><td style='{cell_style}'>{txt2}</td>"
-
-            cnt3 = p_alpha_counts[3].get(L, 0)
-            txt3 = f"<b>{L}</b> : {cnt3}명" if cnt3 > 0 else ""
-            html += f"<td style='{cell_style}'></td><td style='{cell_style}'></td><td style='{cell_style}'></td><td style='{cell_style}'>{txt3}</td>"
-            html += "</tr>"
-
-    html += "<tr><td colspan='12' style='border-top: 1px solid #ccc !important;'></td></tr>"
     return html + "</tbody></table>"
 
 

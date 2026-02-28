@@ -64,7 +64,7 @@ def get_print_css(orientation: str = "세로") -> str:
             border-bottom: 2px solid black !important;
         }}
 
-        .assign-cell {{ font-weight: bold; }}
+        .assign-cell {{ font-weight: normal; }}
 
         @media print {{
             .table3-custom tbody td {{
