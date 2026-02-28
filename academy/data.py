@@ -1,0 +1,49 @@
+# academy/data.py
+import streamlit as st
+import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
+
+from .config import (
+    SCOPE, WORKSHEET_STUDENTS,
+    REQUIRED_COLUMNS,
+    COL_PERIOD, COL_STATUS, COL_DAYS
+)
+from .utils import norm
+
+
+@st.cache_data(ttl=300, show_spinner="loading...")
+def load_data() -> pd.DataFrame:
+    try:
+        creds_info = st.secrets["SERVICE_ACCOUNT_INFO"]
+        creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        client = gspread.authorize(creds)
+
+        sh = client.open(st.secrets["SPREADSHEET_NAME"])
+        ws = sh.worksheet(WORKSHEET_STUDENTS)
+
+        df = pd.DataFrame(ws.get_all_records())
+
+        if df.empty:
+            return df
+
+        # 1) 컬럼명 정규화
+        df.columns = [norm(c) for c in df.columns]
+
+        # 2) 필수 컬럼 검증
+        missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+        if missing:
+            st.error(f"구글 시트 헤더가 일치하지 않습니다. 누락된 항목: {missing}")
+            st.info(f"현재 인식된 항목: {list(df.columns)}")
+            st.stop()
+
+        # 3) 주요 문자열 컬럼 정규화 (공백/특수공백 제거)
+        df[COL_PERIOD] = df[COL_PERIOD].astype(str).apply(norm)
+        df[COL_STATUS] = df[COL_STATUS].astype(str).apply(norm)
+        df[COL_DAYS]   = df[COL_DAYS].astype(str).apply(norm)
+
+        return df
+
+    except Exception as e:
+        st.error(f"데이터 로드 실패: {e}")
+        return pd.DataFrame()
