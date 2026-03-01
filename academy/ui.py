@@ -1,10 +1,8 @@
 # academy/ui.py
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date
 
 from .config import (
-    PAGE_TITLE,
     COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS,
     GRADE_ORDER, WEEKDAY_ORDER
 )
@@ -15,11 +13,10 @@ from .tables import (
     generate_table1, generate_table2, generate_table3, generate_table4
 )
 from .filters import filter_students_for_day_period
-from .utils import get_student_key, sanitize_letter
-
+from .utils import get_student_key, sanitize_letter, now_kst, today_kst
+from .utils import split_days
 
 def run_app():
-    # 데이터
     df = load_data()
 
     # ✅ 배정 저장소(session_state)
@@ -36,8 +33,9 @@ def run_app():
             st.rerun()
 
     st.markdown(
-        '<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: 우측 상단 ⋮ ➜ Print 선택</div>',
-        unsafe_allow_html=True
+        '<div class="no-print" style="background-color:#f1f3f5;padding:15px;border-radius:8px;'
+        'border-left:5px solid #868396;margin-bottom:20px;">🖨️ 인쇄: 우측 상단 ⋮ ➜ Print 선택</div>',
+        unsafe_allow_html=True,
     )
 
     tab_list = st.tabs(["전체 목록", "1. 학년별 명단", "2. 수업시간 명단", "3. 출석부", "4. 학교별 명단"])
@@ -49,39 +47,43 @@ def run_app():
             st.dataframe(
                 df[[COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]],
                 width="stretch",
-                hide_index=True
+                hide_index=True,
             )
-            total_list_html = generate_total_list_html(df)
-            st.markdown(f"<div class='print-only'>{total_list_html}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='print-only'>{generate_total_list_html(df)}</div>", unsafe_allow_html=True)
 
     # 탭 1
     with tab_list[1]:
         if not df.empty:
             col1, col2 = st.columns([3, 1])
             with col1:
-                m1 = st.text_input("제목(연/월)", value=datetime.now().strftime("%Y.%m"), key="m1")
+                m1 = st.text_input("제목(연/월)", value=now_kst().strftime("%Y.%m"), key="m1")
             with col2:
                 show_school_t1 = st.checkbox("학교명 표시", value=True, key="chk_school_m1")
                 show_count_t1 = st.checkbox("학교별 인원수 표시", value=True, key="chk_count_m1")
 
-            st.markdown(f"<div class='report-view'>{generate_table1(df, show_school_t1, show_count_t1, m1)}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='report-view'>{generate_table1(df, show_school_t1, show_count_t1, m1)}</div>",
+                unsafe_allow_html=True,
+            )
 
     # 탭 2
     with tab_list[2]:
         if not df.empty:
-            m2 = st.text_input("하단 표기", value=datetime.now().strftime("%Y-%m"), key="m2")
+            m2 = st.text_input("하단 표기", value=now_kst().strftime("%Y-%m"), key="m2")
             st.markdown(f"<div class='report-view'>{generate_table2(df, m2)}</div>", unsafe_allow_html=True)
 
     # 탭 3
     with tab_list[3]:
         if not df.empty:
-            d3 = st.date_input("날짜 선택", value=date.today())
+            # ✅ 여기 중요: 배포(UTC)에서도 KST 기준 날짜로 기본값 고정
+            d3 = st.date_input("날짜 선택", value=today_kst())
+
             weekday = WEEKDAY_ORDER[d3.weekday()]
             date_key = d3.isoformat()
             day_store = st.session_state["assignments"].setdefault(date_key, {})
 
             # 해당 요일 + 재원만
-            day_mask = df[COL_DAYS].astype(str).apply(lambda x: weekday in str(x))
+            day_mask = df[COL_DAYS].astype(str).apply(lambda x: weekday in split_days(x))
             df_day = df[day_mask].copy()
             df_day = df_day[df_day[COL_STATUS] == "재원"]
 
@@ -148,5 +150,5 @@ def run_app():
     # 탭 4
     with tab_list[4]:
         if not df.empty:
-            m4 = st.text_input("제목(연/월)", value=datetime.now().strftime("%Y.%m"), key="m4")
+            m4 = st.text_input("제목(연/월)", value=now_kst().strftime("%Y.%m"), key="m4")
             st.markdown(f"<div class='report-view'>{generate_table4(df, True, m4)}</div>", unsafe_allow_html=True)

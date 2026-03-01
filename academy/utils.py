@@ -1,6 +1,10 @@
 # academy/utils.py
 import re
 from typing import List
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from datetime import date
+
 import pandas as pd
 
 from .config import (
@@ -11,6 +15,13 @@ from .config import (
 RE_SPACES = re.compile(r"\s+")
 RE_DIGITS = re.compile(r"\d+")
 
+KST = ZoneInfo("Asia/Seoul")
+
+def now_kst() -> datetime:
+    return datetime.now(KST)
+
+def today_kst() -> date:
+    return now_kst().date()
 
 def norm(v) -> str:
     """단일 값(셀) 정규화: NBSP/전각공백/모든 공백 제거"""
