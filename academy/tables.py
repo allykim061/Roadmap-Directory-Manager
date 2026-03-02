@@ -116,28 +116,63 @@ def generate_table2(df: pd.DataFrame, month_text: str) -> str:
                 periods_set.add(n)
     periods = sorted(periods_set) if periods_set else [1, 2, 3]
 
+    # ✅ 학년 정렬용 딕셔너리
+    grade_sort_map = {g: i for i, g in enumerate(GRADE_ORDER)}
+
     for p in periods:
         html += "<div class='a4-print-box'><table class='weekly-table'><thead><tr>"
         html += "<th style='width:10%;'>수업시간</th>"
         for d in target_days:
             html += f"<th style='width:20%;'>{d}</th>"
         html += "<th style='width:10%;'>비고</th></tr></thead><tbody>"
-        html += f"<tr><td style='font-weight:bold; text-align:center;'>{p}교시</td>"
+        
+        # ✅ 수정 1: 인라인 스타일을 지우고 'period-cell' 클래스만 부여 (CSS가 중앙 정렬 담당)
+        html += f"<tr><td class='period-cell'>{p}교시</td>"
 
         for d in target_days:
-            condition = df_active.apply(lambda row: match_attendance(row[COL_DAYS], row[COL_PERIOD], d, p), axis=1)
-            students = df_active[condition].sort_values(COL_NAME)
+            condition = df_active.apply(
+                lambda row: match_attendance(row[COL_DAYS], row[COL_PERIOD], d, p), 
+                axis=1
+            )
+            students = df_active[condition].copy()
 
             student_list = []
-            for _, r in students.iterrows():
-                s_str, g_str = str(r[COL_SCHOOL]).strip(), str(r[COL_GRADE]).strip()
-                school_grade = s_str + (g_str[1:] if s_str and g_str and s_str[-1] == g_str[0] else g_str)
-                student_list.append(f"<div class='weekly-name' style='text-align: left;'>{r[COL_NAME]} ({school_grade})</div>")
+            last_grade = None
 
-            count_html = f"<div class='weekly-name' style='text-align: left; font-weight: normal; margin-top: 2px;'>{len(students)}명</div>" if len(students) > 0 else ""
-            html += f"<td style='vertical-align:top !important; text-align:left !important; padding:5px 4px;'>{''.join(student_list)}{count_html}</td>"
+            if not students.empty:
+                # 학년(GRADE_ORDER) -> 학교 -> 이름 정렬
+                students["_grade_order"] = students[COL_GRADE].map(grade_sort_map).fillna(999)
+                students = students.sort_values(["_grade_order", COL_SCHOOL, COL_NAME])
+
+                for _, r in students.iterrows():
+                    grade = str(r[COL_GRADE]).strip()
+
+                    # 학년 바뀌면 띄우기
+                    if last_grade is not None and grade != last_grade:
+                        student_list.append("<div class='weekly-name'>&nbsp;</div>")
+
+                    s_str, g_str = str(r[COL_SCHOOL]).strip(), grade
+                    school_grade = s_str + (g_str[1:] if s_str and g_str and s_str[-1] == g_str[0] else g_str)
+
+                    student_list.append(
+                        f"<div class='weekly-name' style='text-align:left;'>{r[COL_NAME]} ({school_grade})</div>"
+                    )
+                    last_grade = grade
+
+            # 총 인원수
+            count_html = (
+                f"<div class='weekly-name' style='text-align:left; font-weight:bold; margin-top:4px;'>{len(students)}명</div>"
+                if len(students) > 0 else ""
+            )
+
+            # ✅ 수정 2: 스타일 코드를 최소화 (vertical-align 등은 CSS에서 처리)
+            html += (
+                f"<td style='text-align:left !important;'>"
+                f"{''.join(student_list)}{count_html}</td>"
+            )
 
         html += f"<td></td></tr></tbody></table><div class='date-footer'>{month_text}</div></div>"
+        
     return html
 
 

@@ -41,6 +41,19 @@ def get_print_css(orientation: str = "세로") -> str:
             font-size: 9pt; letter-spacing: -0.6px; margin-bottom: 3px;
         }}
 
+        /* 2번표(주간 명단) 세로 정렬 설정 추가 */
+        .weekly-table td {{
+            vertical-align: top !important;
+            padding-top: 2px !important; /* 천장에 너무 붙지 않게 여백 추가 */
+        }}
+
+        /* 2번표 교시 칸 전용 예외: 가운데 정렬 */
+        .weekly-table td.period-cell {{
+            vertical-align: middle !important;
+            text-align: center !important;
+            font-weight: bold !important;
+        }}
+
         /* ===== 3번 표(table3) 전용 ===== */
         .table3-custom {{ border-collapse: collapse !important; width: 100%; }}
 
@@ -127,7 +140,6 @@ def get_print_css(orientation: str = "세로") -> str:
         }}
     </style>
     """
-
 
 @st.cache_data
 def get_print_css_cached(orientation: str) -> str:
