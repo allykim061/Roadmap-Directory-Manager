@@ -80,9 +80,11 @@ def run_app():
 
             weekday = WEEKDAY_ORDER[d3.weekday()]
             date_key = d3.isoformat()
+            
+            # ✅ day_store 스키마: {(p, skey): {"letter": "A", "absent": False}}
             day_store = st.session_state["assignments"].setdefault(date_key, {})
 
-            # 해당 요일 + 재원만
+            # 해당 요일 + 재원만 (✅ split_days 적용)
             day_mask = df[COL_DAYS].astype(str).apply(lambda x: weekday in split_days(x))
             df_day = df[day_mask].copy()
             df_day = df_day[df_day[COL_STATUS] == "재원"]
@@ -97,10 +99,11 @@ def run_app():
                 df_p = df_p.sort_values(["_grade_order", COL_SCHOOL, COL_NAME])
                 per_period_students[p] = df_p
 
-            # 배정 입력 UI (인쇄 제외)
+            # 배정/결석 입력 UI (인쇄 제외)
             st.markdown('<div class="no-print">', unsafe_allow_html=True)
-            with st.expander("선생님 배정 입력 열기/닫기", expanded=False):
-                st.caption("알파벳 1글자만 입력하세요. **배정 적용**을 눌러야 표/인쇄에 반영됩니다.")
+            with st.expander("선생님 배정, 결석 입력 열기/닫기", expanded=False):
+                st.caption("배정은 알파벳 1글자만 입력하세요.")
+                st.caption("결석자는 ☐에 체크. **적용**을 누르면 반영됩니다.")
 
                 with st.form(key=f"assign_form_{date_key}", clear_on_submit=False):
                     c1, c2, c3 = st.columns(3)
@@ -115,36 +118,62 @@ def run_app():
 
                             for _, row in df_p.iterrows():
                                 skey = get_student_key(row)
-                                current = day_store.get((p, skey), "")
+                                
+                                # ✅ 저장된 데이터가 문자열인지 Dict인지 확인 (마이그레이션)
+                                current = day_store.get((p, skey), {})
+                                if isinstance(current, str):
+                                    c_letter = sanitize_letter(current)
+                                    c_abs = False
+                                else:
+                                    c_letter = sanitize_letter(current.get("letter", ""))
+                                    c_abs = bool(current.get("absent", False))
+
                                 label = f"{row[COL_NAME]} ({row[COL_SCHOOL]} {row[COL_GRADE]})"
 
+                                # ✅ 1행: [이름(왼쪽 크게)] + [결석 체크(오른쪽)]
+                                row1_left, row1_right = st.columns([9, 1], vertical_alignment="center")
+                                with row1_left:
+                                    st.write(label)
+
+                                with row1_right:
+                                    st.checkbox(
+                                        "absent",  # 내부 라벨(숨길 거라 아무거나)
+                                        value=c_abs,
+                                        key=f"absent_{date_key}_{p}_{skey}",
+                                        label_visibility="collapsed",  # ✅ '결석' 글자 숨김
+                                    )
+
+                                # ✅ 2행: 배정(이름 아래 줄) - 원래처럼 한 칸(줄) 내려서
                                 st.text_input(
-                                    label,
-                                    value=current,
+                                    "assign",  # 내부 라벨
+                                    value=c_letter,
                                     max_chars=1,
-                                    key=f"assign_input_{date_key}_{p}_{skey}",
+                                    key=f"assign_{date_key}_{p}_{skey}",
+                                    label_visibility="collapsed",  # ✅ '배정' 글자 숨김
                                 )
 
                     render_period_inputs(c1, 1)
                     render_period_inputs(c2, 2)
                     render_period_inputs(c3, 3)
 
-                    apply_clicked = st.form_submit_button("배정 적용")
+                    apply_clicked = st.form_submit_button("배정 및 결석 적용")
 
                     if apply_clicked:
                         for p in [1, 2, 3]:
                             df_p = per_period_students.get(p, pd.DataFrame())
-                            if df_p.empty:
-                                continue
+                            if df_p.empty: continue
                             for _, row in df_p.iterrows():
                                 skey = get_student_key(row)
-                                v = st.session_state.get(f"assign_input_{date_key}_{p}_{skey}", "")
-                                day_store[(p, skey)] = sanitize_letter(v)
+                                v_let = st.session_state.get(f"assign_{date_key}_{p}_{skey}", "")
+                                v_abs = st.session_state.get(f"absent_{date_key}_{p}_{skey}", False)
+                                
+                                # ✅ 배정 글자와 결석 여부를 딕셔너리로 묶어서 저장!
+                                day_store[(p, skey)] = {"letter": sanitize_letter(v_let), "absent": v_abs}
 
-                        st.success("배정이 적용되었습니다. 아래 출석부/인쇄에 반영됩니다.")
+                        st.success("배정 및 결석이 적용되었습니다. 아래 출석부/인쇄에 반영됩니다.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-            # 출석부 표
+            # 출석부 표 렌더링
             st.markdown(f"<div class='report-view'>{generate_table3(df, d3, False, day_store)}</div>", unsafe_allow_html=True)
 
     # 탭 4

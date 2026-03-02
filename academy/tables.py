@@ -151,12 +151,12 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
     grade_sort_map = {g: i for i, g in enumerate(GRADE_ORDER)}
 
-    # 각 교시별로 "행 모델"을 만든다: ("student"/"blank"/"summary", name_text, assign_letter)
+    # 각 교시별로 "행 모델(Dict)"을 만든다
     rows = {1: [], 2: [], 3: []}
 
-    # 교시별 배정 알파벳 합계
     p_alpha_counts = {1: {}, 2: {}, 3: {}}
     p_counts = {1: 0, 2: 0, 3: 0}
+    p_absent_counts = {1: 0, 2: 0, 3: 0} # 결석자 카운트
 
     for p in [1, 2, 3]:
         df_p = filter_students_for_day_period(df_day, weekday, p)
@@ -165,10 +165,9 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
         last_level = None
 
-        # 1) 학생 행
+        # 1) 학생 행 만들기
         for _, row in df_p.iterrows():
             grade = str(row[COL_GRADE]).strip()
-
             if grade.startswith("초"):
                 current_level = "초"
             elif grade.startswith("중"):
@@ -178,49 +177,72 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
             else:
                 current_level = "기타"
 
-            # 학교급 바뀌면 빈 줄(간격)
             if last_level is not None and current_level != last_level:
-                rows[p].append(("blank", "", ""))
+                rows[p].append({"type": "blank"})
 
             pause = " (휴)" if row[COL_STATUS] == "휴원" else ""
             s_str = str(row[COL_SCHOOL]).strip()
             school_grade = s_str + (grade[1:] if s_str and grade and s_str[-1] == grade[0] else grade)
-
             name_text = f"{row[COL_NAME]} ({school_grade}){pause}"
 
             skey = get_student_key(row)
             akey = (p, skey)
-            letter = sanitize_letter(assignment_map.get(akey, ""))
 
-            rows[p].append(("student", name_text, letter))
-            p_counts[p] += 1
+            # assignment_map 스키마는 dict로 확정: {"letter": "...", "absent": bool}
+            data = assignment_map.get(akey, {"letter": "", "absent": False})
+            if not isinstance(data, dict):
+                data = {"letter": sanitize_letter(str(data)), "absent": False}
 
-            if letter:
-                p_alpha_counts[p][letter] = p_alpha_counts[p].get(letter, 0) + 1
+            letter = sanitize_letter(data.get("letter", ""))
+            is_abs = bool(data.get("absent", False))
+
+            # 집계: 결석은 제외
+            if is_abs:
+                p_absent_counts[p] += 1
+            else:
+                p_counts[p] += 1
+                if letter:
+                    p_alpha_counts[p][letter] = p_alpha_counts[p].get(letter, 0) + 1
+
+            rows[p].append({
+                "type": "student",
+                "text": name_text,
+                "letter": letter,
+                "is_abs": is_abs,
+            })
 
             last_level = current_level
 
-        # 2) 인원수 + 알파벳 합계를 "이름 칸"으로 내려붙이기
-        # 2) 인원수 + 알파벳 합계를 "이름 칸"으로 내려붙이기
-        if p_counts[p] > 0:
-            # 인원수와 알파벳 합계를 하나의 리스트에 차곡차곡 모읍니다.
-            summary_lines = [f"{p_counts[p]}명"]
+        # 2) 💡 사용자님이 헷갈리셨던 부분: 인원수 + 합계를 1개의 줄로 압축!
+        total_in_period = p_counts[p] + p_absent_counts[p]
+        if total_in_period > 0:
+            rows[p].append({"type": "blank"})  # 명단과 합계 사이에 빈 줄 한 번 추가
+
+            summary_lines = []
             
+            # (a) 출석 인원수
+            if p_counts[p] > 0:
+                summary_lines.append(f"{p_counts[p]}명")
+
+            # (b) 알파벳 합계
             letters = sorted(p_alpha_counts[p].keys())
             for L in letters:
                 summary_lines.append(f"{L} : {p_alpha_counts[p][L]}명")
-                
-            # 모은 글자들을 <br>(엔터)로 연결해서 하나의 덩어리로 만듭니다.
-            combined_summary = "<br>".join(summary_lines)
-            
-            # 표에는 합쳐진 덩어리를 딱 "한 줄(한 칸)"로만 추가합니다.
-            rows[p].append(("summary", combined_summary, ""))
 
-    # 3교시 중 가장 긴 길이에 맞춰 행 수 통일
+            # (c) 결석 표시
+            if p_absent_counts[p] > 0:
+                summary_lines.append(f"<span style='color:#d9534f; font-weight:600;'>결석 : {p_absent_counts[p]}명</span>")
+
+            # 리스트에 모인 글자들을 <br>로 연결하여 '하나의 긴 텍스트'로 만들기
+            if summary_lines:
+                combined_summary = "<br>".join(summary_lines)
+                rows[p].append({"type": "summary", "text": combined_summary})
+
+    # 3) 가장 긴 교시 길이에 맞춰 행 수 통일
     max_rows = max(len(rows[1]), len(rows[2]), len(rows[3])) if not df_day.empty else 0
     for p in [1, 2, 3]:
         while len(rows[p]) < max_rows:
-            rows[p].append(("blank", "", ""))
+            rows[p].append({"type": "blank"})
 
     html = (
         f"<h2 style='text-align:left; border-bottom:2px solid black; padding-bottom:5px;'>"
@@ -237,40 +259,44 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
         )
     html += "</tr></thead><tbody>"
 
-    # 기본 테두리(가로선 제거 + 세로선만 유지)
     cell_base = (
         "border-top:0px !important; border-bottom:0px !important;"
         "border-left:1px solid #ccc !important; border-right:1px solid #ccc !important;"
     )
 
+    # HTML 렌더링
     for i in range(max_rows):
         html += "<tr style='border-top:0px !important; border-bottom:0px !important;'>"
 
         for p in [1, 2, 3]:
-            rtype, name_text, letter = rows[p][i]
+            row_data = rows[p][i]
+            rtype = row_data.get("type")
 
             if rtype == "blank":
-                html += (
-                    f"<td style='{cell_base}'></td>"
-                    f"<td style='{cell_base}'></td>"
-                    f"<td style='{cell_base}'></td>"
-                    f"<td style='{cell_base}'></td>"
-                )
+                html += f"<td style='{cell_base}'></td>" * 4
 
             elif rtype == "student":
+                name_text = row_data.get("text", "")
+                letter = row_data.get("letter", "")
+                is_abs = bool(row_data.get("is_abs", False))
+                
+                # 결석이면 absent 클래스 추가
+                abs_class = " absent" if is_abs else ""
+
                 html += (
-                    f"<td class='name-cell' style='{cell_base}'>{name_text}</td>"
+                    f"<td class='name-cell{abs_class}' style='{cell_base}'>{name_text}</td>"
                     f"<td style='{cell_base}'><div class='check-box'></div></td>"
                     f"<td style='{cell_base}'><div class='check-box'></div></td>"
                     f"<td class='assign-cell' style='{cell_base}'>{letter}</td>"
                 )
 
-            else:  # "summary" -> 합쳐진 텍스트를 출력
+            else:  # summary
+                text = row_data.get("text", "")
+                
                 html += (
-                    # ✅ 수정: line-height(줄간격)를 1.2로 설정, 글자 간격 줄이기
-                    # 여러 줄이 들어가므로 vertical-align:top을 줘서 위로 딱 붙게 만듭니다.
-                    f"<td class='name-cell' style='{cell_base} text-align:left !important; padding-left:4px !important; padding-top:4px !important; padding-bottom:4px !important; vertical-align:top !important; line-height:0.6 !important;'>"
-                    f"{name_text}</td>"
+                    f"<td class='name-cell' style='{cell_base} text-align:left !important; padding-left:4px !important;"
+                    f" padding-top:4px !important; padding-bottom:4px !important; line-height:1.2 !important;'>"
+                    f"{text}</td>"
                     f"<td style='{cell_base}'></td>"
                     f"<td style='{cell_base}'></td>"
                     f"<td style='{cell_base}'></td>"
@@ -278,9 +304,7 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
         html += "</tr>"
 
-    # 표 맨 아래 굵은 마감선(원하면 유지)
     html += "<tr><td colspan='12' style='border-top:2px solid black !important;'></td></tr>"
-
     return html + "</tbody></table>"
 
 

@@ -66,6 +66,11 @@ def get_print_css(orientation: str = "세로") -> str:
 
         .assign-cell {{ font-weight: normal; }}
 
+        /* ✅ 결석생: 이름칸에 취소선 */
+        .table3-custom .name-cell.absent {{
+            text-decoration: line-through !important;
+        }}
+
         @media print {{
             .table3-custom tbody td {{
                 border-left: 1px solid black !important;
