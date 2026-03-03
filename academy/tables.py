@@ -189,34 +189,24 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
     grade_sort_map = {g: i for i, g in enumerate(GRADE_ORDER)}
 
-    # 각 교시별로 "행 모델(Dict)"을 만든다
     rows = {1: [], 2: [], 3: []}
 
     p_alpha_counts = {1: {}, 2: {}, 3: {}}
     p_counts = {1: 0, 2: 0, 3: 0}
-    p_absent_counts = {1: 0, 2: 0, 3: 0} # 결석자 카운트
+    p_absent_counts = {1: 0, 2: 0, 3: 0}
 
     for p in [1, 2, 3]:
         df_p = filter_students_for_day_period(df_day, weekday, p)
         df_p["_grade_order"] = df_p[COL_GRADE].map(grade_sort_map).fillna(999)
         df_p = df_p.sort_values(["_grade_order", COL_SCHOOL, COL_NAME])
 
-        last_level = None
+        last_grade = None  # ✅ 학년 기준 추적 (초5 -> 초6 등)
 
-        # 1) 학생 행 만들기
         for _, row in df_p.iterrows():
             grade = str(row[COL_GRADE]).strip()
-            if grade.startswith("초"):
-                current_level = "초"
-            elif grade.startswith("중"):
-                current_level = "중"
-            elif grade.startswith("고"):
-                current_level = "고"
-            else:
-                current_level = "기타"
 
-            if last_level is not None and current_level != last_level:
-                rows[p].append({"type": "blank"})
+            # ✅ 학년이 바뀌는 '첫 학생 줄'에만 플래그를 세움 (gap row를 추가하지 않음)
+            is_new_grade = (last_grade is not None and grade != last_grade)
 
             pause = " (휴)" if row[COL_STATUS] == "휴원" else ""
             s_str = str(row[COL_SCHOOL]).strip()
@@ -226,7 +216,6 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
             skey = get_student_key(row)
             akey = (p, skey)
 
-            # assignment_map 스키마는 dict로 확정: {"letter": "...", "absent": bool}
             data = assignment_map.get(akey, {"letter": "", "absent": False})
             if not isinstance(data, dict):
                 data = {"letter": sanitize_letter(str(data)), "absent": False}
@@ -247,36 +236,34 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
                 "text": name_text,
                 "letter": letter,
                 "is_abs": is_abs,
+                "is_new_grade": is_new_grade,  # ✅ 추가
             })
 
-            last_level = current_level
+            last_grade = grade  # ✅ 업데이트
 
-        # 2) 💡 사용자님이 헷갈리셨던 부분: 인원수 + 합계를 1개의 줄로 압축!
         total_in_period = p_counts[p] + p_absent_counts[p]
         if total_in_period > 0:
-            rows[p].append({"type": "blank"})  # 명단과 합계 사이에 빈 줄 한 번 추가
+            # 명단과 합계 사이 빈 줄(기존 유지)
+            rows[p].append({"type": "blank"})
 
             summary_lines = []
-            
-            # (a) 출석 인원수
             if p_counts[p] > 0:
                 summary_lines.append(f"{p_counts[p]}명")
 
-            # (b) 알파벳 합계
             letters = sorted(p_alpha_counts[p].keys())
             for L in letters:
                 summary_lines.append(f"{L} : {p_alpha_counts[p][L]}명")
 
-            # (c) 결석 표시
             if p_absent_counts[p] > 0:
-                summary_lines.append(f"<span style='color:#d9534f; font-weight:600;'>결석 : {p_absent_counts[p]}명</span>")
+                summary_lines.append(
+                    f"<span style='color:#d9534f; font-weight:600;'>결석 : {p_absent_counts[p]}명</span>"
+                )
 
-            # 리스트에 모인 글자들을 <br>로 연결하여 '하나의 긴 텍스트'로 만들기
             if summary_lines:
                 combined_summary = "<br>".join(summary_lines)
                 rows[p].append({"type": "summary", "text": combined_summary})
 
-    # 3) 가장 긴 교시 길이에 맞춰 행 수 통일
+    # 가장 긴 교시 길이에 맞춰 행 수 통일
     max_rows = max(len(rows[1]), len(rows[2]), len(rows[3])) if not df_day.empty else 0
     for p in [1, 2, 3]:
         while len(rows[p]) < max_rows:
@@ -302,7 +289,6 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
         "border-left:1px solid #ccc !important; border-right:1px solid #ccc !important;"
     )
 
-    # HTML 렌더링
     for i in range(max_rows):
         html += "<tr style='border-top:0px !important; border-bottom:0px !important;'>"
 
@@ -317,20 +303,28 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
                 name_text = row_data.get("text", "")
                 letter = row_data.get("letter", "")
                 is_abs = bool(row_data.get("is_abs", False))
-                
-                # 결석이면 absent 클래스 추가
-                abs_class = " absent" if is_abs else ""
+                is_new_grade = bool(row_data.get("is_new_grade", False))
 
+                abs_class = " absent" if is_abs else ""
+                gap_class = " new-grade-gap" if is_new_grade else ""
+
+                # ✅ 4칸 모두 같은 wrapper로 감싸서 "줄 전체"가 함께 내려가게 처리
                 html += (
-                    f"<td class='name-cell{abs_class}' style='{cell_base}'>{name_text}</td>"
-                    f"<td style='{cell_base}'><div class='check-box'></div></td>"
-                    f"<td style='{cell_base}'><div class='check-box'></div></td>"
-                    f"<td class='assign-cell' style='{cell_base}'>{letter}</td>"
+                    f"<td class='name-cell{abs_class}' style='{cell_base}'>"
+                    f"<div class='student-inner{gap_class}'>{name_text}</div></td>"
+
+                    f"<td style='{cell_base}'>"
+                    f"<div class='student-inner{gap_class}'><div class='check-box'></div></div></td>"
+
+                    f"<td style='{cell_base}'>"
+                    f"<div class='student-inner{gap_class}'><div class='check-box'></div></div></td>"
+
+                    f"<td class='assign-cell' style='{cell_base}'>"
+                    f"<div class='student-inner{gap_class}'>{letter}</div></td>"
                 )
 
             else:  # summary
                 text = row_data.get("text", "")
-                
                 html += (
                     f"<td class='name-cell' style='{cell_base} text-align:left !important; padding-left:4px !important;"
                     f" padding-top:4px !important; padding-bottom:4px !important; line-height:1.2 !important;'>"

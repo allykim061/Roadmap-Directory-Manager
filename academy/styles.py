@@ -110,6 +110,16 @@ def get_print_css(orientation: str = "세로") -> str:
             text-decoration: line-through !important;
         }}
 
+        /* 3번표: 학생 한 줄 내부 공통 래퍼 */
+        .table3-custom .student-inner{{
+        line-height: 1.1;
+        }}
+
+        /* 학년 변경 시: '첫 학생 줄'만 아주 살짝 내려서 간격처럼 보이게 */
+        .table3-custom .student-inner.new-grade-gap{{
+        padding-top: 7px;   /* ⭐ 여기만 조절: 1px ~ 3px 추천 */
+        }}
+
         /* 🚀 4번 표(학교별 명단) 전용 가로폭 덮어쓰기 (5글자 학교명 대응) */
         .table4-custom th:first-child, .table4-custom td:first-child {{ 
             width: 14% !important; 
