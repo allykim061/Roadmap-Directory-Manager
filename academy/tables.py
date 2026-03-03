@@ -348,16 +348,68 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
 def generate_table4(df: pd.DataFrame, show_grade: bool, month_text: str) -> str:
     df_active = df[df[COL_STATUS] == "재원"].copy()
-    unique_schools = sorted(df_active[COL_SCHOOL].unique())
+    
+    # ✅ 1) 학교급 정렬용 보조 함수: 초(1) -> 중(2) -> 고(3) -> 기타(4)
+    def get_school_rank(school_name):
+        name = str(school_name).strip()
+        if not name: return 99
+        if name.endswith("초"): return 1
+        elif name.endswith("중"): return 2
+        elif name.endswith("고"): return 3
+        else: return 4
+
+    # ✅ 2) 학교 이름 추출 후 [1순위: 학교급(초/중/고), 2순위: 가나다순] 정렬
+    unique_schools = df_active[COL_SCHOOL].dropna().unique().tolist()
+    unique_schools.sort(key=lambda x: (get_school_rank(x), str(x)))
+
+    # 학년 정렬 기준표 (GRADE_ORDER: 초1 -> 초2 -> ... 고3)
+    grade_sort_map = {str(g).strip(): i for i, g in enumerate(GRADE_ORDER)}
 
     html = f"<h2 style='text-align:center; font-size:16pt;'>학교별 명단 ({month_text})</h2>"
-    html += "<table><thead><tr><th style='width:20%'>학교</th><th>학생 명단</th><th style='width:10%'>인원수</th></tr></thead><tbody>"
+    
+    # 1번 표의 비율(8%, 84%, 8%)과 큼직한 글자 스타일(table1-custom)을 그대로 씁니다.
+    html += "<table class='table1-custom'><thead><tr><th>학교</th><th>학생 명단</th><th>인원수</th></tr></thead><tbody>"
+    
     total = 0
     for school in unique_schools:
-        group = df_active[df_active[COL_SCHOOL] == school]
-        names = [f"{r[COL_NAME]}({r[COL_GRADE]})" if show_grade else r[COL_NAME] for _, r in group.iterrows()]
-        html += f"<tr><th>{school}</th><td style='text-align:left !important; padding-left:10px !important;'>{', '.join(names)}</td><td>{len(group)}</td></tr>"
+        group = df_active[df_active[COL_SCHOOL] == school].copy()
+        if group.empty:
+            continue
+
+        # 데이터에 묻어있는 공백 찌꺼기 청소
+        group["_grade_clean"] = group[COL_GRADE].astype(str).str.strip()
+
+        # [같은 학교 내 정렬] 1순위: 학년 순서, 2순위: 이름 가나다순
+        group["_grade_order"] = group["_grade_clean"].map(grade_sort_map).fillna(999)
+        group_sorted = group.sort_values(by=["_grade_order", COL_NAME])
+
+        formatted_groups = []
+        
+        if show_grade:
+            # 정렬된 순서를 그대로 유지하면서(sort=False) 학년별로 묶어줍니다.
+            for grade, grade_group in group_sorted.groupby("_grade_clean", sort=False):
+                names_list = grade_group[COL_NAME].tolist()
+                names_str = " ".join(names_list)
+                count = len(names_list)
+                
+                # 【학년】 뒤에 한 칸 띄우기 적용!
+                grade_text = f"【{grade}】 "
+                count_text = f" {count}명" if count >= 4 else ""
+                
+                if count == 1:
+                    formatted_groups.append(f"{grade_text}{names_str}{count_text}")
+                else:
+                    formatted_groups.append(f"{grade_text}[{names_str}]{count_text}")
+            
+            names_final_str = " ".join(formatted_groups)
+        else:
+            names_final_str = " ".join(group_sorted[COL_NAME].tolist())
+
+        # t1-names 클래스를 적용해 좌상단 정렬과 행간 띄우기 적용
+        html += f"<tr><th>{school}</th><td class='t1-names'>{names_final_str}</td><td>{len(group)}</td></tr>"
         total += len(group)
 
-    html += f"<tr><th>합계</th><td></td><td>{total}</td></tr></tbody></table>"
+    # 합계 칸
+    html += f"<tr><th>합계</th><td class='t1-names'></td><td>{total}</td></tr></tbody></table>"
+    
     return html
