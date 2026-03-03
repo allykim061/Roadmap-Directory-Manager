@@ -110,6 +110,11 @@ def get_print_css(orientation: str = "세로") -> str:
             text-decoration: line-through !important;
         }}
 
+        /* 🚀 4번 표(학교별 명단) 전용 가로폭 덮어쓰기 (5글자 학교명 대응) */
+        .table4-custom th:first-child, .table4-custom td:first-child {{ 
+            width: 14% !important; 
+        }}
+
         @media print {{
             .table3-custom tbody td {{
                 border-left: 1px solid black !important;

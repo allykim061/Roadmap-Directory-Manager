@@ -31,15 +31,15 @@ def filter_students_for_day_period(df: pd.DataFrame, weekday: str, period: int) 
     pstr = norm_series(df[COL_PERIOD])
 
     # 요일 포함 여부: (^|,)월(,|$)
-    day_pat = rf"(^|,){re.escape(weekday)}(,|$)"
+    day_pat = rf"(?:^|,){re.escape(weekday)}(?:,|$)"
     mask_day = days.str.contains(day_pat, regex=True, na=False)
 
     # 요일 마커 포함 여부
-    marker_pat = "(" + "|".join(map(re.escape, WEEKDAY_ORDER)) + ")"
+    marker_pat = "(?:" + "|".join(map(re.escape, WEEKDAY_ORDER)) + ")"
     has_marker = pstr.str.contains(marker_pat, regex=True, na=False)
 
     # 마커가 있는 경우: (^|,)월1(,|$)
-    token_pat = rf"(^|,){re.escape(weekday)}{int(period)}(,|$)"
+    token_pat = rf"(?:^|,){re.escape(weekday)}{int(period)}(?:,|$)"
     mask_marker = pstr.str.contains(token_pat, regex=True, na=False)
 
     # 숫자만 있는 경우: 1이 10/11에 매칭되면 안 됨

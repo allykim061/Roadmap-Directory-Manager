@@ -367,8 +367,8 @@ def generate_table4(df: pd.DataFrame, show_grade: bool, month_text: str) -> str:
 
     html = f"<h2 style='text-align:center; font-size:16pt;'>학교별 명단 ({month_text})</h2>"
     
-    # 1번 표의 비율(8%, 84%, 8%)과 큼직한 글자 스타일(table1-custom)을 그대로 씁니다.
-    html += "<table class='table1-custom'><thead><tr><th>학교</th><th>학생 명단</th><th>인원수</th></tr></thead><tbody>"
+    # 1번 표의 비율(8%, 84%, 8%)과 큼직한 글자 스타일(table1-custom)유지, 첫번째 비율은 변경
+    html += "<table class='table1-custom table4-custom'><thead><tr><th>학교</th><th>학생 명단</th><th>인원수</th></tr></thead><tbody>"
     
     total = 0
     for school in unique_schools:
