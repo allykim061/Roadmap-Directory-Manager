@@ -31,7 +31,8 @@ def generate_total_list_html(df: pd.DataFrame) -> str:
 def generate_table1(df: pd.DataFrame, show_school: bool, show_count: bool, month_text: str) -> str:
     df_active = df[df[COL_STATUS] == "재원"].copy()
     html = f"<h2 style='text-align:center; font-size:16pt;'>학년별 명단 ({month_text})</h2>"
-    html += "<table style='font-size: 4pt;'><thead><tr><th style='width:15%'>학년</th><th>학생 명단</th><th style='width:15%'>인원수</th></tr></thead><tbody>"
+    
+    html += "<table class='table1-custom'><thead><tr><th>학년</th><th>학생 명단</th><th>인원수</th></tr></thead><tbody>"
 
     total = 0
     for grade in GRADE_ORDER:
@@ -51,18 +52,21 @@ def generate_table1(df: pd.DataFrame, show_school: bool, show_count: bool, month
                 school_text = f"【{school}】" if show_school else ""
                 count_text = f" {count}명" if (show_count and count >= 4) else ""
 
+                # ✅ <div>를 벗겨내고 원래대로 텍스트만 묶습니다.
                 if count == 1:
                     formatted_groups.append(f"{school_text}{names_str}{count_text}")
                 else:
                     formatted_groups.append(f"{school_text}[{names_str}]{count_text}")
 
+            # ✅ 띄어쓰기(" ")를 기준으로 가로로 쭉 이어 붙입니다.
             names_final_str = " ".join(formatted_groups)
         else:
             names_final_str = " ".join(group_sorted[COL_NAME].tolist())
 
-        html += f"<tr><th>{grade}<td style='text-align:left !important; padding-top: 25px; padding-bottom: 25px; padding-left:2px !important; font-size: 10pt; line-height: 2;'>{names_final_str}</td><td>{len(group)}</td></tr>"
+        html += f"<tr><th>{grade}</th><td class='t1-names'>{names_final_str}</td><td>{len(group)}</td></tr>"
         total += len(group)
 
+    # --- 주 N회 합계 요약 부분 ---
     df_active["days_count"] = df_active[COL_DAYS].apply(lambda x: len(split_days(x)))
     summary_texts = []
 
@@ -89,18 +93,17 @@ def generate_table1(df: pd.DataFrame, show_school: bool, show_count: bool, month
             for _, school_group in df_target.groupby(COL_SCHOOL, sort=False):
                 groups.append(" ".join(school_group[COL_NAME].tolist()))
 
-        return f"{label}: " + " ".join(groups)
+        return f"<div style='margin-bottom:8px;'><strong>{label}:</strong> " + " ".join(groups) + "</div>"
 
     str_1day = get_summary_str(1, "주 1회", show_school, show_count)
     str_3day = get_summary_str(3, "주 3회", show_school, show_count)
 
-    if str_1day:
-        summary_texts.append(str_1day)
-    if str_3day:
-        summary_texts.append(str_3day)
+    if str_1day: summary_texts.append(str_1day)
+    if str_3day: summary_texts.append(str_3day)
 
-    summary_final_str = "<br>".join(summary_texts)
-    html += f"<tr><th>합계</th><td style='text-align:left !important; padding-left:10px !important;'>{summary_final_str}</td><td>{total}</td></tr></tbody></table>"
+    summary_final_str = "".join(summary_texts)
+    
+    html += f"<tr><th>합계</th><td class='t1-names'>{summary_final_str}</td><td>{total}</td></tr></tbody></table>"
     return html
 
 

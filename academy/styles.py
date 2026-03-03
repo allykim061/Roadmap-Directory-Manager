@@ -41,6 +41,32 @@ def get_print_css(orientation: str = "세로") -> str:
             font-size: 9pt; letter-spacing: -0.6px; margin-bottom: 3px;
         }}
 
+        /* ===== 1번 표(table1) 전용 (화면/인쇄 완전 통일) ===== */
+        .table1-custom {{
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }}
+
+        /* 양옆 가로폭은 8%로 최소화, 가운데 명단 칸을 84%로 극대화 */
+        .table1-custom th:first-child, .table1-custom td:first-child {{ width: 8% !important; }}
+        .table1-custom th:last-child, .table1-custom td:last-child {{ width: 8% !important; }}
+
+        /* 학년, 인원수 글자 11pt로 큼직하게 */
+        .table1-custom th, .table1-custom td {{
+            font-size: 11pt !important; 
+        }}
+
+        /* 학생 명단 셀: 좌상단 정렬, 글자 11.5pt로 최대화 */
+        .table1-custom .t1-names {{
+            text-align: left !important;
+            vertical-align: top !important;
+            padding: 8px 6px !important;
+            font-size: 11.5pt !important;
+            line-height: 1.8 !important;
+            word-break: keep-all !important;
+        }}
+
         /* 2번표(주간 명단) 세로 정렬 설정 추가 */
         .weekly-table td {{
             vertical-align: top !important;
@@ -117,7 +143,8 @@ def get_print_css(orientation: str = "세로") -> str:
 
             @page {{ size: {page_size}; margin: 8mm 5mm; }}
 
-            h2 {{ font-size: 12pt !important; margin-bottom: 5px !important; padding-bottom: 2px !important; }}
+            /* 🚀 인쇄 시 제목 크기 16pt로 유지! */
+            h2 {{ font-size: 16pt !important; margin-bottom: 10px !important; padding-bottom: 2px !important; }}
 
             table {{ font-size: 7.5pt !important; color: black; border: 1px solid black !important; margin-bottom: 5px !important; page-break-inside: auto; }}
             tr {{ page-break-inside: avoid; page-break-after: auto; }}
@@ -136,6 +163,16 @@ def get_print_css(orientation: str = "세로") -> str:
             div[role="tablist"], header, footer, [data-testid="stSidebar"], [data-testid="stHeader"],
             .stButton, .stDateInput, .stTextInput, .stCheckbox, [data-testid="stExpander"] {{ 
                 display: none !important; 
+            }}
+
+            /* 🚀 1번 표 인쇄 전용 강제 고정 (화면과 100% 동일한 글자 크기 유지) */
+            .table1-custom th, .table1-custom td:not(.t1-names) {{ 
+                font-size: 11pt !important; 
+            }}
+            .table1-custom .t1-names {{
+                font-size: 11.5pt !important; 
+                padding: 8px 6px !important;  
+                line-height: 1.8 !important;  
             }}
         }}
     </style>
