@@ -62,7 +62,7 @@ def run_app():
                 show_count_t1 = st.checkbox("학교별 인원수 표시", value=True, key="chk_count_m1")
 
             st.markdown(
-                f"<div class='report-view'>{generate_table1(df, show_school_t1, show_count_t1, m1)}</div>",
+                f"<div class='a4-print-box'><div class='report-view'>{generate_table1(df, show_school_t1, show_count_t1, m1)}</div></div>",
                 unsafe_allow_html=True,
             )
 
@@ -174,10 +174,10 @@ def run_app():
             st.markdown("</div>", unsafe_allow_html=True)
 
             # 출석부 표 렌더링
-            st.markdown(f"<div class='report-view'>{generate_table3(df, d3, False, day_store)}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='a4-print-box'><div class='report-view'>{generate_table3(df, d3, False, day_store)}</div></div>", unsafe_allow_html=True)
 
     # 탭 4
     with tab_list[4]:
         if not df.empty:
             m4 = st.text_input("제목(연/월)", value=now_kst().strftime("%Y.%m"), key="m4")
-            st.markdown(f"<div class='report-view'>{generate_table4(df, True, m4)}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='a4-print-box'><div class='report-view'>{generate_table4(df, True, m4)}</div></div>", unsafe_allow_html=True)

@@ -1,3 +1,4 @@
+# academy/styles.py
 import streamlit as st
 
 def get_print_css(orientation: str = "세로") -> str:
@@ -34,8 +35,15 @@ def get_print_css(orientation: str = "세로") -> str:
             color: black;
         }}
 
-        .a4-print-box {{ margin-bottom: 15px; page-break-after: always; }}
-        .a4-print-box:last-child {{ page-break-after: auto; }}
+        .a4-print-box {{ 
+            margin-bottom: 15px; 
+            page-break-after: always; 
+            break-after: page; /* 💡 최신 브라우저용 추가 */
+        }}
+        .a4-print-box:last-child {{ 
+            page-break-after: auto; 
+            break-after: auto; /* 💡 최신 브라우저용 추가 */
+        }}
 
         .date-footer {{ margin-top: 5px; text-align: right; font-size: 11pt; color: #666; }}
         
