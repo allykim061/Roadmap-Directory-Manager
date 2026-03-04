@@ -246,25 +246,7 @@ def get_print_css(orientation: str = "세로") -> str:
            인쇄 전용 (옵션1: report-view만 인쇄)
            ========================= */
         @media print {{
-            /* ✅ 화면 전체가 찍히는 것 방지: report-view만 보이게 */
-            body * {{
-                visibility: hidden !important;
-            }}
-            .report-view, .report-view * {{
-                visibility: visible !important;
-            }}
-
-            /* ✅ fixed 금지: 여러 페이지 인쇄 깨짐 방지 */
-            .report-view {{
-                position: static !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border: none !important;
-                background: white !important;
-            }}
-
-            /* Streamlit UI 제거(안전망) */
+            /* 1) Streamlit UI/조작 요소 숨김 */
             div[role="tablist"], header, footer,
             [data-testid="stSidebar"], [data-testid="stHeader"],
             .stButton, .stDateInput, .stTextInput, .stCheckbox, [data-testid="stExpander"],
@@ -272,29 +254,27 @@ def get_print_css(orientation: str = "세로") -> str:
                 display: none !important;
             }}
 
-            /* 상단 공백 최소화 */
-            html, body {{
+            /* 2) 상단 여백(공백) 핵심 제거 */
+            html, body, .stApp, .stAppViewContainer, section.main, .main, .block-container {{
                 margin: 0 !important;
                 padding: 0 !important;
             }}
-            .stApp {{
+
+            /* report-view 자체가 갖고 있던 화면용 여백 제거 (네 코드에 margin-top:20px, padding:20px 있음) */
+            .report-view {{
                 margin: 0 !important;
                 padding: 0 !important;
-            }}
-            .block-container {{
-                padding-top: 0 !important;
-                padding-bottom: 0 !important;
-                margin-top: 0 !important;
-                max-width: 100% !important;
+                border: none !important;
+                background: #fff !important;
             }}
 
-            @page {{ size: {page_size}; margin: 8mm 5mm; }}
+            /* 3) 페이지 여백 (더 올리고 싶으면 top을 4mm까지도 가능) */
+            @page {{ size: A4 portrait; margin: 6mm 5mm; }}
 
-            /* 제목 */
-            h2 {{
-                font-size: 16pt !important;
+            /* 4) 제목 위쪽 공백 제거 */
+            h2, h2.t3-title {{
                 margin: 0 0 6px 0 !important;
-                padding-bottom: 2px !important;
+                padding: 0 !important;
             }}
 
             /* 전역 인쇄 테이블(3번표 제외) */
@@ -357,10 +337,10 @@ def get_print_css(orientation: str = "세로") -> str:
             .daily-grid-container {{ gap: 4px !important; }}
             .check-box {{ width: 10px !important; height: 10px !important; }}
 
-            .table3-custom .student-inner {{ font-size: 8.5pt !important; }}
+            .table3-custom .student-inner {{ font-size: 9.5pt !important; }}
             .table3-custom .summary-cell {{
-                font-size: 8pt !important;
-                line-height: 1.3 !important;
+                font-size: 8.5pt !important;
+                line-height: 0.8 !important;
             }}
 
             /* 1번표 인쇄 고정 */
@@ -370,6 +350,20 @@ def get_print_css(orientation: str = "세로") -> str:
                 padding: 8px 6px !important;
                 line-height: 1.8 !important;
             }}
+
+            /* 요약/간격/blank는 전역 td 규칙보다 우선하게 고정 */
+            .table3-custom td.summary-cell{{
+                padding: 2px 4px !important;
+                line-height: 1.2 !important;
+                vertical-align: top !important;
+            }}
+            .table3-custom td.t3-gap{{
+                height: 3px !important;
+                padding: 0 !important;
+                line-height: 0 !important;
+                font-size: 0 !important;
+            }}
+
         }}
     </style>
     """
