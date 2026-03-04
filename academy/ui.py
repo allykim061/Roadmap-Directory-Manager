@@ -38,7 +38,7 @@ def run_app():
         unsafe_allow_html=True,
     )
 
-    tab_list = st.tabs(["전체 목록", "1. 학년별 명단", "2. 수업시간 명단", "3. 출석부", "4. 학교별 명단"])
+    tab_list = st.tabs(["전체 목록", "학년별 명단", "수업시간 명단", "출석부", "학교별 명단"])
 
     # 탭 0
     with tab_list[0]:
