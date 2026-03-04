@@ -189,23 +189,34 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
     grade_sort_map = {g: i for i, g in enumerate(GRADE_ORDER)}
 
-    rows = {1: [], 2: [], 3: []}
+    # ✅ 제목
+    html = (
+        f"<h2 class='t3-title' style='text-align:left; border-bottom:2px solid black;"
+        f" padding-bottom:5px; margin:0 0 8px 0;'>"
+        f"{target_date.month}-{target_date.day} {weekday}</h2>"
+    )
 
-    p_alpha_counts = {1: {}, 2: {}, 3: {}}
-    p_counts = {1: 0, 2: 0, 3: 0}
-    p_absent_counts = {1: 0, 2: 0, 3: 0}
+    # ✅ 교시별 콘텐츠 행 리스트
+    rows = {1: [], 2: [], 3: []}
 
     for p in [1, 2, 3]:
         df_p = filter_students_for_day_period(df_day, weekday, p)
+        if df_p.empty:
+            # 교시가 완전히 비어도 "헤더+표"는 유지하되, rows는 비어있을 수 있음
+            # (아래에서 max_len 맞추며 blank가 채워짐)
+            rows[p] = []
+            continue
+
         df_p["_grade_order"] = df_p[COL_GRADE].map(grade_sort_map).fillna(999)
         df_p = df_p.sort_values(["_grade_order", COL_SCHOOL, COL_NAME])
 
-        last_grade = None  # ✅ 학년 기준 추적 (초5 -> 초6 등)
+        last_grade = None
+        p_count, p_absent = 0, 0
+        p_alpha_counts = {}
 
+        # 1) 학생 rows
         for _, row in df_p.iterrows():
-            grade = str(row[COL_GRADE]).strip()
-
-            # ✅ 학년이 바뀌는 '첫 학생 줄'에만 플래그를 세움 (gap row를 추가하지 않음)
+            grade = str(row[COL_GRADE]).replace("\u00A0", "").replace("\u3000", "").strip()
             is_new_grade = (last_grade is not None and grade != last_grade)
 
             pause = " (휴)" if row[COL_STATUS] == "휴원" else ""
@@ -223,122 +234,137 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
             letter = sanitize_letter(data.get("letter", ""))
             is_abs = bool(data.get("absent", False))
 
-            # 집계: 결석은 제외
+            # 집계
             if is_abs:
-                p_absent_counts[p] += 1
+                p_absent += 1
             else:
-                p_counts[p] += 1
+                p_count += 1
                 if letter:
-                    p_alpha_counts[p][letter] = p_alpha_counts[p].get(letter, 0) + 1
+                    p_alpha_counts[letter] = p_alpha_counts.get(letter, 0) + 1
 
             rows[p].append({
                 "type": "student",
                 "text": name_text,
                 "letter": letter,
                 "is_abs": is_abs,
-                "is_new_grade": is_new_grade,  # ✅ 추가
+                "is_new_grade": is_new_grade,
             })
 
-            last_grade = grade  # ✅ 업데이트
+            last_grade = grade
 
-        total_in_period = p_counts[p] + p_absent_counts[p]
+        # 2) 요약 rows (한 줄 = 한 행)
+        total_in_period = p_count + p_absent
         if total_in_period > 0:
-            # 명단과 합계 사이 빈 줄(기존 유지)
-            rows[p].append({"type": "blank"})
-
             summary_lines = []
-            if p_counts[p] > 0:
-                summary_lines.append(f"{p_counts[p]}명")
-
-            letters = sorted(p_alpha_counts[p].keys())
-            for L in letters:
-                summary_lines.append(f"{L} : {p_alpha_counts[p][L]}명")
-
-            if p_absent_counts[p] > 0:
+            if p_count > 0:
+                summary_lines.append(f"{p_count}명")
+            for L in sorted(p_alpha_counts.keys()):
+                summary_lines.append(f"{L} : {p_alpha_counts[L]}명")
+            if p_absent > 0:
                 summary_lines.append(
-                    f"<span style='color:#d9534f; font-weight:600;'>결석 : {p_absent_counts[p]}명</span>"
+                    f"<span style='color:#d9534f; font-weight:600;'>결석 : {p_absent}명</span>"
                 )
 
             if summary_lines:
-                combined_summary = "<br>".join(summary_lines)
-                rows[p].append({"type": "summary", "text": combined_summary})
+                # ✅ 명단-요약 사이 얇은 gap (colspan 금지!)
+                rows[p].append({"type": "gap"})
+                for line in summary_lines:
+                    rows[p].append({"type": "summary", "text": line})
 
-    # 가장 긴 교시 길이에 맞춰 행 수 통일
-    max_rows = max(len(rows[1]), len(rows[2]), len(rows[3])) if not df_day.empty else 0
+    # ✅ (2) 가장 긴 길이
+    max_len = max(len(rows[1]), len(rows[2]), len(rows[3])) if not df_day.empty else 0
+
+    # ✅ (3) 길이 맞추기 + (4) bottom 한 번만
     for p in [1, 2, 3]:
-        while len(rows[p]) < max_rows:
+        while len(rows[p]) < max_len:
             rows[p].append({"type": "blank"})
+        rows[p].append({"type": "bottom"})
 
-    html = (
-        f"<h2 style='text-align:left; border-bottom:2px solid black; padding-bottom:5px;'>"
-        f"{target_date.month}-{target_date.day} {weekday}</h2>"
-    )
-
-    html += "<table class='table3-custom daily-table'><thead><tr>"
-    for p in [1, 2, 3]:
-        html += (
-            f"<th style='width:21%;'>{p}교시</th>"
-            f"<th style='width:4%;'>출석</th>"
-            f"<th style='width:4%;'>숙제</th>"
-            f"<th style='width:4%;'>배정</th>"
+    # ------------------------------------------------------------
+    # 렌더링 유틸: 4칸(td) 생성 (colspan 없이 세로선 유지)
+    # ------------------------------------------------------------
+    def render_cell_4(blank_class: str = "", content0: str = "&nbsp;", content3: str = "&nbsp;") -> str:
+        return (
+            f"<td class='{blank_class}'>{content0}</td>"
+            f"<td class='{blank_class}'>&nbsp;</td>"
+            f"<td class='{blank_class}'>&nbsp;</td>"
+            f"<td class='{blank_class}'>{content3}</td>"
         )
-    html += "</tr></thead><tbody>"
 
-    cell_base = (
-        "border-top:0px !important; border-bottom:0px !important;"
-        "border-left:1px solid #ccc !important; border-right:1px solid #ccc !important;"
-    )
+    # ✅ 3교시를 나란히 배치
+    html += "<div class='daily-grid-container'>"
 
-    for i in range(max_rows):
-        html += "<tr style='border-top:0px !important; border-bottom:0px !important;'>"
+    for p in [1, 2, 3]:
+        html += "<div class='period-column'>"
+        html += "<table class='table3-custom daily-table'><thead><tr>"
+        html += (
+            f"<th style='width:70%;'>{p}교시</th>"
+            f"<th style='width:10%;'>출석</th>"
+            f"<th style='width:10%;'>숙제</th>"
+            f"<th style='width:10%;'>배정</th>"
+        )
+        html += "</tr></thead><tbody>"
 
-        for p in [1, 2, 3]:
-            row_data = rows[p][i]
-            rtype = row_data.get("type")
+        # ✅ rows[p]를 순서대로 렌더링
+        for r in rows[p]:
+            rtype = r.get("type")
 
             if rtype == "blank":
-                html += f"<td style='{cell_base}'></td>" * 4
+                # 공백도 4칸 유지 (세로선 유지)
+                row_html = render_cell_4("t3-blank", "&nbsp;", "&nbsp;")
+                html += f"<tr class='t3-row'>{row_html}</tr>"
 
-            elif rtype == "student":
-                name_text = row_data.get("text", "")
-                letter = row_data.get("letter", "")
-                is_abs = bool(row_data.get("is_abs", False))
-                is_new_grade = bool(row_data.get("is_new_grade", False))
+            elif rtype == "gap":
+                # ✅ gap도 4칸(각각 t3-gap)으로 만들어야 세로선이 끊기지 않음
+                gap_cells = (
+                    "<td class='t3-gap'>&nbsp;</td>"
+                    "<td class='t3-gap'>&nbsp;</td>"
+                    "<td class='t3-gap'>&nbsp;</td>"
+                    "<td class='t3-gap'>&nbsp;</td>"
+                )
+                html += f"<tr class='t3-gap-row'>{gap_cells}</tr>"
+
+            elif rtype == "summary":
+                text = r.get("text", "&nbsp;")
+                summary_html = f"<div class='summary-cell'>{text}</div>"
+                row_html = render_cell_4("t3-summary", summary_html, "&nbsp;")
+                html += f"<tr class='t3-row'>{row_html}</tr>"
+
+            elif rtype == "bottom":
+                # ✅ 하단 마감선 (4칸 유지)
+                bottom_cells = (
+                    "<td>&nbsp;</td>"
+                    "<td>&nbsp;</td>"
+                    "<td>&nbsp;</td>"
+                    "<td>&nbsp;</td>"
+                )
+                html += f"<tr class='t3-bottom'>{bottom_cells}</tr>"
+
+            else:  # student
+                name_text = r.get("text", "")
+                letter = r.get("letter", "")
+                is_abs = bool(r.get("is_abs", False))
+                is_new_grade = bool(r.get("is_new_grade", False))
 
                 abs_class = " absent" if is_abs else ""
                 gap_class = " new-grade-gap" if is_new_grade else ""
 
-                # ✅ 4칸 모두 같은 wrapper로 감싸서 "줄 전체"가 함께 내려가게 처리
-                html += (
-                    f"<td class='name-cell{abs_class}' style='{cell_base}'>"
-                    f"<div class='student-inner{gap_class}'>{name_text}</div></td>"
+                # ✅ 체크박스/배정도 같은 wrapper로 감싸서 줄 정렬 유지
+                name_html = f"<div class='student-inner{gap_class}'>{name_text}</div>"
+                box_html = f"<div class='student-inner{gap_class}'><div class='check-box'></div></div>"
+                assign_html = f"<div class='student-inner{gap_class}'>{letter}</div>"
 
-                    f"<td style='{cell_base}'>"
-                    f"<div class='student-inner{gap_class}'><div class='check-box'></div></div></td>"
+                html += "<tr class='t3-row'>"
+                html += f"<td class='name-cell{abs_class}'>{name_html}</td>"
+                html += f"<td>{box_html}</td>"
+                html += f"<td>{box_html}</td>"
+                html += f"<td class='assign-cell'>{assign_html}</td>"
+                html += "</tr>"
 
-                    f"<td style='{cell_base}'>"
-                    f"<div class='student-inner{gap_class}'><div class='check-box'></div></div></td>"
+        html += "</tbody></table></div>"
 
-                    f"<td class='assign-cell' style='{cell_base}'>"
-                    f"<div class='student-inner{gap_class}'>{letter}</div></td>"
-                )
-
-            else:  # summary
-                text = row_data.get("text", "")
-                html += (
-                    f"<td class='name-cell' style='{cell_base} text-align:left !important; padding-left:4px !important;"
-                    f" padding-top:4px !important; padding-bottom:4px !important; line-height:1.2 !important;'>"
-                    f"{text}</td>"
-                    f"<td style='{cell_base}'></td>"
-                    f"<td style='{cell_base}'></td>"
-                    f"<td style='{cell_base}'></td>"
-                )
-
-        html += "</tr>"
-
-    html += "<tr><td colspan='12' style='border-top:2px solid black !important;'></td></tr>"
-    return html + "</tbody></table>"
-
+    html += "</div>"
+    return html
 
 def generate_table4(df: pd.DataFrame, show_grade: bool, month_text: str) -> str:
     df_active = df[df[COL_STATUS] == "재원"].copy()

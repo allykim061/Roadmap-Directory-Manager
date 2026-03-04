@@ -156,7 +156,7 @@ def run_app():
                     render_period_inputs(c2, 2)
                     render_period_inputs(c3, 3)
 
-                    apply_clicked = st.form_submit_button("배정 및 결석 적용")
+                    apply_clicked = st.form_submit_button("적용")
 
                     if apply_clicked:
                         for p in [1, 2, 3]:

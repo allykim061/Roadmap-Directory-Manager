@@ -7,8 +7,22 @@ def get_print_css(orientation: str = "세로") -> str:
     return f"""
     <style>
         @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+
+        /* =========================
+           공통(화면/인쇄)
+           ========================= */
+        html, body {{
+            font-family: 'Pretendard', sans-serif !important;
+        }}
         body, .stApp {{ font-family: 'Pretendard', sans-serif !important; }}
-        .report-view {{ border: 1px solid #ccc; padding: 20px; background: white; margin-top: 20px; color: black; }}
+
+        .report-view {{
+            border: 1px solid #ccc;
+            padding: 20px;
+            background: white;
+            margin-top: 20px;
+            color: black;
+        }}
 
         .a4-print-box {{ margin-bottom: 15px; page-break-after: always; }}
         .a4-print-box:last-child {{ page-break-after: auto; }}
@@ -16,48 +30,66 @@ def get_print_css(orientation: str = "세로") -> str:
         .date-footer {{ margin-top: 5px; text-align: right; font-size: 11pt; color: #666; }}
         .check-box {{ display: inline-block; width: 14px; height: 14px; border: 1px solid #000; vertical-align: middle; }}
 
-        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px; }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 10px;
+        }}
 
         th {{
-            border: 1px solid #ccc !important; padding: 8px 4px !important;
-            text-align: center !important; vertical-align: middle !important;
-            white-space: nowrap !important; word-break: keep-all !important;
-            font-size: 10pt !important; background-color: #f0f0f0 !important; color: black !important;
+            border: 1px solid #ccc !important;
+            padding: 8px 4px !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+            white-space: nowrap !important;
+            word-break: keep-all !important;
+            font-size: 10pt !important;
+            background-color: #f0f0f0 !important;
+            color: black !important;
         }}
 
         td {{
-            border: 1px solid #ccc; padding: 6px 4px; text-align: center;
-            vertical-align: middle !important; word-wrap: break-word;
-            font-size: 10pt; color: black;
+            border: 1px solid #ccc;
+            padding: 6px 4px;
+            text-align: center;
+            vertical-align: middle !important;
+            word-wrap: break-word;
+            font-size: 10pt;
+            color: black;
         }}
 
         .daily-table td.name-cell {{
-            text-align: left; padding-left: 4px; white-space: nowrap;
-            overflow: hidden; text-overflow: ellipsis; font-size: 10pt; letter-spacing: -0.2px;
+            text-align: left;
+            padding-left: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 10pt;
+            letter-spacing: -0.2px;
         }}
 
         .weekly-name {{
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            font-size: 9pt; letter-spacing: -0.6px; margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 9pt;
+            letter-spacing: -0.6px;
+            margin-bottom: 3px;
         }}
 
-        /* ===== 1번 표(table1) 전용 (화면/인쇄 완전 통일) ===== */
+        /* =========================
+           1번표(table1)
+           ========================= */
         .table1-custom {{
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
         }}
-
-        /* 양옆 가로폭은 8%로 최소화, 가운데 명단 칸을 84%로 극대화 */
         .table1-custom th:first-child, .table1-custom td:first-child {{ width: 8% !important; }}
         .table1-custom th:last-child, .table1-custom td:last-child {{ width: 8% !important; }}
+        .table1-custom th, .table1-custom td {{ font-size: 11pt !important; }}
 
-        /* 학년, 인원수 글자 11pt로 큼직하게 */
-        .table1-custom th, .table1-custom td {{
-            font-size: 11pt !important; 
-        }}
-
-        /* 학생 명단 셀: 좌상단 정렬, 글자 11.5pt로 최대화 */
         .table1-custom .t1-names {{
             text-align: left !important;
             vertical-align: top !important;
@@ -67,127 +99,276 @@ def get_print_css(orientation: str = "세로") -> str:
             word-break: keep-all !important;
         }}
 
-        /* 2번표(주간 명단) 세로 정렬 설정 추가 */
+        /* =========================
+           2번표(주간)
+           ========================= */
         .weekly-table td {{
             vertical-align: top !important;
-            padding-top: 2px !important; /* 천장에 너무 붙지 않게 여백 추가 */
+            padding-top: 2px !important;
         }}
-
-        /* 2번표 교시 칸 전용 예외: 가운데 정렬 */
         .weekly-table td.period-cell {{
             vertical-align: middle !important;
             text-align: center !important;
             font-weight: bold !important;
         }}
 
-        /* ===== 3번 표(table3) 전용 ===== */
-        .table3-custom {{ border-collapse: collapse !important; width: 100%; }}
-
-        .table3-custom th {{
-            border-top: 1px solid black !important;
-            border-bottom: 2px solid black !important;
-            border-left: 1px solid #ccc !important;
-            border-right: 1px solid #ccc !important;
+        /* =========================
+           3번표(일일 출석부) - 화면에서도 가로선 제거 + 세로선만
+           ========================= */
+        .daily-grid-container {{
+            display: flex;
+            width: 100%;
+            gap: 6px;                 /* 화면/인쇄 균형 */
+            align-items: flex-start;
         }}
 
-        .table3-custom tbody tr {{ border-top: 0px !important; border-bottom: 0px !important; }}
-
-        .table3-custom tbody td {{
-            border-top: 0px !important;
-            border-bottom: 0px !important;
-            border-left: 1px solid #ccc !important;
-            border-right: 1px solid #ccc !important;
+        .period-column {{
+            flex: 1 1 0;
+            min-width: 0;
         }}
 
-        .table3-custom tbody tr:last-child td {{
-            border-bottom: 2px solid black !important;
+        .period-column table {{
+            width: 100%;
         }}
 
-        .assign-cell {{ font-weight: normal; }}
+        .table3-custom {{
+            border-collapse: collapse !important;
+            width: 100%;
+        }}
 
-        /* ✅ 결석생: 이름칸에 취소선 */
+        /* (A) 테이블/행 단위 가로 border 제거 */
+        .table3-custom,
+        .table3-custom thead,
+        .table3-custom tbody,
+        .table3-custom tr {{
+            border-top: 0 !important;
+            border-bottom: 0 !important;
+        }}
+
+        /* (B) 셀: 가로선 완전 제거 + 세로선만 켜기(화면에선 회색) */
+        .table3-custom th,
+        .table3-custom td {{
+            border: none !important;
+            border-top: 0 !important;
+            border-bottom: 0 !important;
+            border-left: 1px solid #999 !important;
+            border-right: 1px solid #999 !important;
+        }}
+
+        /* (C) 헤더: 위/아래 선 유지 + 헤더 글자 수평 강제 */
+        .table3-custom thead th {{
+            border-top: 1px solid #000 !important;
+            border-bottom: 2px solid #000 !important;
+
+            writing-mode: horizontal-tb !important;
+            transform: none !important;
+            white-space: nowrap !important;
+            word-break: keep-all !important;
+
+            padding: 4px 2px !important;
+            overflow: hidden !important;
+            text-overflow: clip !important;
+        }}
+
+        /* (D) 외곽(좌/우) */
+        .table3-custom th:first-child,
+        .table3-custom td:first-child {{
+            border-left: 1px solid #000 !important;
+        }}
+
+        .table3-custom th:last-child,
+        .table3-custom td:last-child {{
+            border-right: 1px solid #000 !important;
+        }}
+
+        /* (E) 결석 표시 */
         .table3-custom .name-cell.absent {{
             text-decoration: line-through !important;
         }}
 
-        /* 3번표: 학생 한 줄 내부 공통 래퍼 */
-        .table3-custom .student-inner{{
-        line-height: 1.1;
+        /* (F) 학생 텍스트 */
+        .table3-custom .student-inner {{
+            font-size: 11pt !important;
+            line-height: 1.2;
         }}
 
-        /* 학년 변경 시: '첫 학생 줄'만 아주 살짝 내려서 간격처럼 보이게 */
-        .table3-custom .student-inner.new-grade-gap{{
-        padding-top: 7px;   /* ⭐ 여기만 조절: 1px ~ 3px 추천 */
+        .table3-custom .student-inner.new-grade-gap {{
+            padding-top: 7px !important;
         }}
 
-        /* 🚀 4번 표(학교별 명단) 전용 가로폭 덮어쓰기 (5글자 학교명 대응) */
-        .table4-custom th:first-child, .table4-custom td:first-child {{ 
-            width: 14% !important; 
+        /* (G) 요약/간격 */
+        .table3-custom .summary-cell {{
+            text-align: left !important;
+            padding: 2px 4px !important;
+            font-size: 10.5pt !important;
+            line-height: 1.2 !important;
         }}
 
-        @media print {{
-            .table3-custom tbody td {{
-                border-left: 1px solid black !important;
-                border-right: 1px solid black !important;
-            }}
-            .table3-custom tbody tr:last-child td {{
-                border-bottom: 2px solid black !important;
-            }}
+        .table3-custom td.t3-gap {{
+            padding: 0 !important;
+            height: 3px !important;
+            line-height: 0 !important;
+            font-size: 0 !important;
         }}
 
+        /* (H) 하단 마감선: tables.py에서 <tr class='t3-bottom'> 쓰는 버전 기준 */
+        .table3-custom tbody tr.t3-bottom td {{
+            padding: 0 !important;
+            height: 0 !important;
+            line-height: 0 !important;
+            font-size: 0 !important;
+
+            border-top: 1.5px solid #000 !important;
+            border-bottom: none !important;
+            border-left: none !important;
+            border-right: none !important;
+        }}
+
+        .assign-cell {{
+            font-weight: normal;
+        }}
+
+        /* =========================
+           4번표(table4)
+           ========================= */
+        .table4-custom th:first-child, .table4-custom td:first-child {{
+            width: 14% !important;
+        }}
+
+        /* =========================
+           화면 전용
+           ========================= */
         @media screen {{
             .print-only {{ display: none !important; }}
         }}
 
+        /* =========================
+           인쇄 전용 (옵션1: report-view만 인쇄)
+           ========================= */
         @media print {{
-            *, *::before, *::after {{ box-sizing: border-box !important; }}
-
-            .weekly-table th,
-            .weekly-table td {{
-                overflow: hidden !important;
+            /* ✅ 화면 전체가 찍히는 것 방지: report-view만 보이게 */
+            body * {{
+                visibility: hidden !important;
+            }}
+            .report-view, .report-view * {{
+                visibility: visible !important;
             }}
 
-            div[role="tablist"], header, footer, [data-testid="stSidebar"], [data-testid="stHeader"],
-            .stButton, .stDateInput, .stTextInput, .stCheckbox {{ display: none !important; }}
-            .no-print {{ display: none !important; }}
-            .block-container {{ padding: 0 !important; max-width: 100% !important; }}
-            .report-view {{ border: none !important; padding: 0 !important; margin: 0 !important; }}
+            /* ✅ fixed 금지: 여러 페이지 인쇄 깨짐 방지 */
+            .report-view {{
+                position: static !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                background: white !important;
+            }}
 
-            [data-testid="stDataFrame"] {{ display: none !important; }}
-            .print-only {{ display: block !important; }}
+            /* Streamlit UI 제거(안전망) */
+            div[role="tablist"], header, footer,
+            [data-testid="stSidebar"], [data-testid="stHeader"],
+            .stButton, .stDateInput, .stTextInput, .stCheckbox, [data-testid="stExpander"],
+            .no-print, [data-testid="stDataFrame"] {{
+                display: none !important;
+            }}
+
+            /* 상단 공백 최소화 */
+            html, body {{
+                margin: 0 !important;
+                padding: 0 !important;
+            }}
+            .stApp {{
+                margin: 0 !important;
+                padding: 0 !important;
+            }}
+            .block-container {{
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin-top: 0 !important;
+                max-width: 100% !important;
+            }}
 
             @page {{ size: {page_size}; margin: 8mm 5mm; }}
 
-            /* 🚀 인쇄 시 제목 크기 16pt로 유지! */
-            h2 {{ font-size: 16pt !important; margin-bottom: 10px !important; padding-bottom: 2px !important; }}
+            /* 제목 */
+            h2 {{
+                font-size: 16pt !important;
+                margin: 0 0 6px 0 !important;
+                padding-bottom: 2px !important;
+            }}
 
-            table {{ font-size: 7.5pt !important; color: black; border: 1px solid black !important; margin-bottom: 5px !important; page-break-inside: auto; }}
+            /* 전역 인쇄 테이블(3번표 제외) */
+            table {{
+                font-size: 7.5pt !important;
+                border: 1px solid #000 !important;
+                margin-bottom: 5px !important;
+                page-break-inside: auto;
+            }}
             tr {{ page-break-inside: avoid; page-break-after: auto; }}
-            th, td {{ border: 1px solid black !important; color: black !important; }}
 
-            th {{ background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 8pt !important; padding: 4px 2px !important; }}
-            .no-bg-th {{ background-color: white !important; }}
+            table:not(.table3-custom) th,
+            table:not(.table3-custom) td {{
+                border: 1px solid #000 !important;
+                color: #000 !important;
+            }}
 
-            td {{ padding: 2px 1px !important; line-height: 1.0 !important; }}
+            /* ✅ 3번표 인쇄: 세로선을 검정으로 + 외곽 살짝 강조 */
+            .table3-custom th,
+            .table3-custom td {{
+                border-left: 1px solid #000 !important;
+                border-right: 1px solid #000 !important;
+            }}
 
-            .daily-table td.name-cell {{ font-size: 7.5pt !important; letter-spacing: -0.5px !important; }}
-            .weekly-name {{ font-size: 7pt !important; margin-bottom: 1px !important; letter-spacing: -0.5px !important; }}
+            .table3-custom thead th {{
+                border-top: 1px solid #000 !important;
+                border-bottom: 2px solid #000 !important;
+                writing-mode: horizontal-tb !important;
+                transform: none !important;
+                white-space: nowrap !important;
+            }}
 
+            .table3-custom th:first-child,
+            .table3-custom td:first-child {{
+                border-left: 2px solid #000 !important;
+            }}
+            .table3-custom th:last-child,
+            .table3-custom td:last-child {{
+                border-right: 2px solid #000 !important;
+            }}
+
+            /* 하단 마감선(인쇄에서는 조금 더 또렷하게) */
+            .table3-custom tbody tr.t3-bottom td {{
+                border-top: 2px solid #000 !important;
+            }}
+
+            /* 인쇄 가독성 */
+            th {{
+                background-color: #f0f0f0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                font-size: 8pt !important;
+                padding: 4px 2px !important;
+            }}
+            td {{
+                padding: 2px 1px !important;
+                line-height: 1.0 !important;
+            }}
+
+            .daily-grid-container {{ gap: 4px !important; }}
             .check-box {{ width: 10px !important; height: 10px !important; }}
 
-            div[role="tablist"], header, footer, [data-testid="stSidebar"], [data-testid="stHeader"],
-            .stButton, .stDateInput, .stTextInput, .stCheckbox, [data-testid="stExpander"] {{ 
-                display: none !important; 
+            .table3-custom .student-inner {{ font-size: 8.5pt !important; }}
+            .table3-custom .summary-cell {{
+                font-size: 8pt !important;
+                line-height: 1.3 !important;
             }}
 
-            /* 🚀 1번 표 인쇄 전용 강제 고정 (화면과 100% 동일한 글자 크기 유지) */
-            .table1-custom th, .table1-custom td:not(.t1-names) {{ 
-                font-size: 11pt !important; 
-            }}
+            /* 1번표 인쇄 고정 */
+            .table1-custom th, .table1-custom td:not(.t1-names) {{ font-size: 11pt !important; }}
             .table1-custom .t1-names {{
-                font-size: 11.5pt !important; 
-                padding: 8px 6px !important;  
-                line-height: 1.8 !important;  
+                font-size: 11.5pt !important;
+                padding: 8px 6px !important;
+                line-height: 1.8 !important;
             }}
         }}
     </style>
