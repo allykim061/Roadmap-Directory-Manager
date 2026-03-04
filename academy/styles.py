@@ -25,6 +25,8 @@ def get_print_css(orientation: str = "세로") -> str:
            ========================================================= */
         html, body, .stApp {{
             font-family: 'Pretendard', sans-serif !important;
+            color: #000 !important;
+            font-weight: 500;
         }}
 
         .report-view {{
@@ -67,6 +69,7 @@ def get_print_css(orientation: str = "세로") -> str:
             font-size: 10pt !important;
             background-color: #f0f0f0 !important;
             color: black !important;
+            font-weight: 600;
         }}
 
         td {{
@@ -77,10 +80,18 @@ def get_print_css(orientation: str = "세로") -> str:
             word-wrap: break-word;
             font-size: 10pt;
             color: black;
+            font-weight: 500;
         }}
 
         .daily-table td.name-cell {{ text-align: left; padding-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10pt; letter-spacing: -0.2px; }}
-        .weekly-name {{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9pt; letter-spacing: -0.6px; margin-bottom: 3px; }}
+        .weekly-name {{ 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            font-size: 9pt; /* 2번표 글자크기 조정*/
+            letter-spacing: -0.6px; 
+            margin-bottom: 3px; /* 2번표 줄 사이 간격 조정*/
+            }}
 
         /* =========================================================
            1번표(table1) / 4번표(table4)
@@ -90,6 +101,24 @@ def get_print_css(orientation: str = "세로") -> str:
         .table1-custom th:last-child, .table1-custom td:last-child {{ width: 8% !important; }}
         .table1-custom th, .table1-custom td {{ font-size: 11pt !important; }}
         .table1-custom .t1-names {{ text-align: left !important; vertical-align: top !important; padding: 8px 6px !important; font-size: 11.5pt !important; line-height: 1.8 !important; word-break: keep-all !important; }}
+        /* ✅ 1번표 합계(주1회/주3회) 줄 간격/여백 정리 */
+        .table1-custom td.t1-summary{{
+        vertical-align: top !important;
+        }}
+
+        .table1-custom td.t1-summary .t1-summary-line{{
+        margin: 0 0 2px 0 !important;   /* 기존 8px 제거 */
+        padding: 0 !important;
+        line-height: 1.2 !important;
+        }}
+
+        .table1-custom td.t1-summary .t1-summary-line:last-child{{
+        margin-bottom: 0 !important;
+        }}
+
+        .table1-custom td.t1-summary strong{{
+        font-weight: 600 !important;
+        }}
 
         .table4-custom th:first-child, .table4-custom td:first-child {{ width: 14% !important; }}
 
@@ -147,6 +176,12 @@ def get_print_css(orientation: str = "세로") -> str:
            인쇄 전용 (완벽한 레이아웃 방어)
            ========================================================= */
         @media print {{
+        
+            body {{
+                color: #000 !important;
+                font-weight: 500;
+            }}
+            
             /* 1) UI 숨김 */
             div[role="tablist"], header, footer, [data-testid="stSidebar"], [data-testid="stHeader"],
             .stButton, .stDateInput, .stTextInput, .stCheckbox, [data-testid="stExpander"],
@@ -186,8 +221,15 @@ def get_print_css(orientation: str = "세로") -> str:
             .table3-custom td.t3-gap {{ height: 3px !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important; }}
 
             /* 1번표 인쇄 고정 */
-            .table1-custom th, .table1-custom td:not(.t1-names) {{ font-size: 11pt !important; }}
-            .table1-custom .t1-names {{ font-size: 11.5pt !important; padding: 8px 6px !important; line-height: 1.8 !important; }}
+            .table1-custom th, 
+            .table1-custom td:not(.t1-names) {{ 
+                font-size: 10pt !important; 
+                }}
+
+            .table1-custom .t1-names {{ 
+                font-size: 10.5pt !important; 
+                padding: 8px 6px !important; 
+                line-height: 1.65 !important; }}
 
             /* ✅ 네가 계산해 낸 완벽한 페이지 단위 에어백 설정 (머리글 on/off 모두 완벽 대응) */
             .a4-print-box {{

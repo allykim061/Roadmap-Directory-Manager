@@ -93,7 +93,11 @@ def generate_table1(df: pd.DataFrame, show_school: bool, show_count: bool, month
             for _, school_group in df_target.groupby(COL_SCHOOL, sort=False):
                 groups.append(" ".join(school_group[COL_NAME].tolist()))
 
-        return f"<div style='margin-bottom:8px;'><strong>{label}:</strong> " + " ".join(groups) + "</div>"
+        return (
+            f"<div class='t1-summary-line'><strong>{label}:</strong> "
+            + " ".join(groups)
+            + "</div>"
+        )
 
     str_1day = get_summary_str(1, "주 1회", show_school, show_count)
     str_3day = get_summary_str(3, "주 3회", show_school, show_count)
@@ -103,7 +107,7 @@ def generate_table1(df: pd.DataFrame, show_school: bool, show_count: bool, month
 
     summary_final_str = "".join(summary_texts)
     
-    html += f"<tr><th>합계</th><td class='t1-names'>{summary_final_str}</td><td>{total}</td></tr></tbody></table>"
+    html += f"<tr><th>합계</th><td class='t1-names t1-summary'>{summary_final_str}</td><td>{total}</td></tr></tbody></table>"
     return html
 
 
