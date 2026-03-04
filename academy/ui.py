@@ -40,16 +40,117 @@ def run_app():
 
     tab_list = st.tabs(["전체 목록", "학년별 명단", "수업시간 명단", "출석부", "학교별 명단"])
 
-    # 탭 0
+   # 탭 0
     with tab_list[0]:
-        st.markdown("<h2 style='font-size:16pt;'>등록 학생 목록</h2>", unsafe_allow_html=True)
         if not df.empty:
+            display_df = df[[COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]]
+            total_n = len(display_df)
+
+            # ─────────────────────────
+            # 0) 검색값
+            # ─────────────────────────
+            q = (st.session_state.get("tab0_search", "") or "").strip()
+
+            # ─────────────────────────
+            # 1) 필터 먼저 계산
+            # ─────────────────────────
+            if q:
+                mask = display_df.astype(str).apply(
+                    lambda row: row.str.contains(q, case=False, na=False)
+                ).any(axis=1)
+                filtered_df = display_df[mask]
+            else:
+                filtered_df = display_df
+
+            # ─────────────────────────
+            # 2) 1행: 제목(왼쪽) + 검색영역(오른쪽)
+            # ─────────────────────────
+            col_title, col_tools = st.columns([3, 2], vertical_alignment="bottom")
+
+            with col_title:
+                st.markdown(
+                    f"""
+                    <h2 style="font-size:16pt; margin:0;">
+                        등록 학생 목록
+                        <span style="font-size:11pt; color:#666;">[총 {total_n}명]</span>
+                    </h2>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            with col_tools:
+                col_reset, col_input = st.columns([1.0, 4.5], vertical_alignment="bottom")
+
+                with col_reset:
+                    # ✅ 검색어가 있을 때만 Reset 버튼 보이기
+                    if q:
+                        if st.button("Reset", use_container_width=True):
+                            st.session_state["tab0_search"] = ""
+                            st.rerun()
+                    else:
+                        st.empty()
+
+                with col_input:
+                    st.text_input(
+                        "",
+                        placeholder="🔍 Search",
+                        label_visibility="collapsed",
+                        key="tab0_search"
+                    )
+
+            # ─────────────────────────
+            # 3) 2행: 검색 결과 문구 (검색창 왼쪽 선 기준 + 자리 고정)
+            # ─────────────────────────
+            col_left_blank, col_right_msg = st.columns([3, 2])
+
+            with col_right_msg:
+                # ✅ 1행에서 쓴 것과 같은 비율로 다시 쪼개서 "검색창 시작점"을 맞춘다
+                col_reset_spacer, col_msg = st.columns([1.0, 4.5])
+
+                with col_reset_spacer:
+                    st.empty()  # Reset 버튼 자리만큼 비워서 정렬 기준 맞춤
+
+                with col_msg:
+                    q_now = (st.session_state.get("tab0_search", "") or "").strip()
+
+                    if q_now:
+                        msg = f"'{q_now}' 검색 결과: {len(filtered_df)}명"
+                    else:
+                        msg = "&nbsp;"  # 자리 유지
+
+                    st.markdown(
+                        f"""
+                        <div style="
+                            font-size:12px;
+                            color:#666;
+                            text-align:left;   /* ✅ 검색창 왼쪽 선 기준 */
+                            margin-top:-6px;
+                            min-height:18px;
+                        ">
+                            {msg}
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+            # ✅ 표와 검색영역 사이 약간 띄우기
+            st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+
+            # ─────────────────────────
+            # 4) 표 렌더
+            # ─────────────────────────
+            height = len(filtered_df) * 35 + 40  # 상한 해제 버전
+
             st.dataframe(
-                df[[COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]],
-                width="stretch",
+                filtered_df,
+                use_container_width=True,
                 hide_index=True,
+                height=height,
             )
-            st.markdown(f"<div class='print-only'>{generate_total_list_html(df)}</div>", unsafe_allow_html=True)
+
+            st.markdown(
+                f"<div class='print-only'>{generate_total_list_html(df)}</div>",
+                unsafe_allow_html=True
+            )
 
     # 탭 1
     with tab_list[1]:
