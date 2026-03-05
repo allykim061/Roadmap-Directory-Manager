@@ -10,7 +10,7 @@ from .filters import filter_students_for_day_period
 
 
 def generate_total_list_html(df: pd.DataFrame) -> str:
-    html = "<table style='width:100%;'><thead><tr>"
+    html = "<table class='total-list-table' style='width:100%;'><thead><tr>"
     cols = [COL_NAME, COL_SCHOOL, COL_GRADE, COL_DAYS, COL_PERIOD, COL_STATUS]
     widths = {COL_NAME: "15%", COL_SCHOOL: "25%", COL_GRADE: "10%", COL_DAYS: "20%", COL_PERIOD: "20%", COL_STATUS: "10%"}
 
