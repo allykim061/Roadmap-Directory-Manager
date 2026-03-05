@@ -59,7 +59,7 @@ def generate_table1(df: pd.DataFrame, show_school: bool, show_count: bool, month
                     formatted_groups.append(f"{school_text}[{names_str}]{count_text}")
 
             # ✅ 띄어쓰기(" ")를 기준으로 가로로 쭉 이어 붙입니다.
-            names_final_str = " ".join(formatted_groups)
+            names_final_str = "&nbsp;&nbsp;&nbsp;&nbsp;".join(formatted_groups)
         else:
             names_final_str = " ".join(group_sorted[COL_NAME].tolist())
 
