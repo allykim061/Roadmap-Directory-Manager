@@ -119,7 +119,7 @@ def get_print_css(orientation: str = "세로") -> str:
             text-align: left !important;
             vertical-align: top !important;
             padding: 8px 6px !important;
-            font-size: 11.5pt !important;
+            font-size: 10.5pt !important;
             line-height: 1.8 !important;
             word-break: keep-all !important;
         }}
@@ -171,7 +171,7 @@ def get_print_css(orientation: str = "세로") -> str:
         .table3-custom th:first-child, .table3-custom td:first-child {{ border-left: 1px solid #000 !important; }}
         .table3-custom th:last-child, .table3-custom td:last-child {{ border-right: 1px solid #000 !important; }}
         .table3-custom .name-cell.absent {{ text-decoration: line-through !important; }}
-        .table3-custom .student-inner {{ font-size: 11pt !important; line-height: 1.2; }}
+        .table3-custom .student-inner {{ font-size: 10pt !important; line-height: 1.5; }}
         .table3-custom .student-inner.new-grade-gap {{ padding-top: 7px !important; }}
         .table3-custom .summary-cell {{ text-align: left !important; padding: 2px 4px !important; font-size: 10.5pt !important; line-height: 1.2 !important; }}
         .table3-custom td.t3-gap {{ padding: 0 !important; height: 3px !important; line-height: 0 !important; font-size: 0 !important; }}
@@ -399,6 +399,15 @@ def get_print_css(orientation: str = "세로") -> str:
                 font-size: 10.5pt !important;
                 padding: 8px 6px !important;
                 line-height: 1.65 !important;
+            }}
+
+            /* 2번표(주간표) 왼쪽 잘림 완벽 방어 */
+            .weekly-table {{
+                width: 100% !important;
+                max-width: 100% !important;
+                margin-left: 0 !important;
+                box-sizing: border-box !important;
+                table-layout: fixed !important;
             }}
 
             /* 0번표 제목 및 검색어 헤더 영역 (양쪽 끝 정렬) */

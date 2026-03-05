@@ -146,7 +146,7 @@ def run_app():
     with tab_list[2]:
         if not df.empty:
             m2 = st.text_input("하단 표기", value=now_kst().strftime("%Y-%m"), key="m2")
-            st.markdown(f"<div class='report-view'>{generate_table2(df, m2)}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='a4-print-box'><div class='report-view'>{generate_table2(df, m2)}</div></div>", unsafe_allow_html=True)
 
     # 탭 3
     with tab_list[3]:
