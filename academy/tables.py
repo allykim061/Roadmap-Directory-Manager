@@ -154,9 +154,10 @@ def generate_table2(df: pd.DataFrame, month_text: str) -> str:
                 for _, r in students.iterrows():
                     grade = str(r[COL_GRADE]).strip()
 
-                    # 학년 바뀌면 띄우기
+                   # 학년 바뀌면 띄우기
                     if last_grade is not None and grade != last_grade:
-                        student_list.append("<div class='weekly-name'>&nbsp;</div>")
+                        # 💡 &nbsp;(빈 줄)를 지우고 height로 조정
+                        student_list.append("<div style='height: 8px;'></div>")
 
                     s_str, g_str = str(r[COL_SCHOOL]).strip(), grade
                     school_grade = s_str + (g_str[1:] if s_str and g_str and s_str[-1] == g_str[0] else g_str)
@@ -195,11 +196,10 @@ def generate_table3(df: pd.DataFrame, target_date, include_paused: bool, assignm
 
     # ✅ 제목 (inline 유지: 기존과 동일)
     html = (
-        f"<h2 class='t3-title' style='text-align:left; border-bottom:2px solid black;"
+        f"<h2 class='t3-title' style='text-align:left; font-size:16pt; border-bottom:2px solid black;"
         f" padding-bottom:5px; margin:0 0 8px 0;'>"
         f"{target_date.month}-{target_date.day} {weekday}</h2>"
     )
-
     html += "<div class='daily-grid-container'>"
 
     # -----------------------------
@@ -421,7 +421,8 @@ def generate_table4(df: pd.DataFrame, show_grade: bool, month_text: str) -> str:
                 else:
                     formatted_groups.append(f"{grade_text}[{names_str}]{count_text}")
             
-            names_final_str = " ".join(formatted_groups)
+            # ✅ 띄어쓰기 4칸(&nbsp; 4개)을 기준으로 학년 덩어리들을 이어 붙입니다!
+            names_final_str = "&nbsp;&nbsp;&nbsp;&nbsp;".join(formatted_groups)
         else:
             names_final_str = " ".join(group_sorted[COL_NAME].tolist())
 

@@ -74,7 +74,7 @@ def get_print_css(orientation: str = "세로") -> str:
             white-space: nowrap !important;
             word-break: keep-all !important;
             font-size: 10pt !important;
-            background-color: #f0f0f0 !important;
+            background-color: #F1F5F9 !important;
             color: black !important;
             font-weight: 600; /* 유지 */
         }}
@@ -103,9 +103,9 @@ def get_print_css(orientation: str = "세로") -> str:
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-size: 9pt;          /* 2번표 글자크기 조정 유지 */
+            font-size: 8pt;          /* 2번표 글자크기 조정 유지 */
             letter-spacing: -0.6px;
-            margin-bottom: 3px;      /* 2번표 줄 사이 간격 조정 유지 */
+            margin-bottom: 5px;      /* 2번표 줄 사이 간격 조정 유지 */
         }}
 
         /* =========================================================
@@ -347,7 +347,7 @@ def get_print_css(orientation: str = "세로") -> str:
 
             /* 인쇄 가독성 */
             th {{
-                background-color: #f0f0f0 !important;
+                background-color: #F1F5F9 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
                 font-size: 8pt !important;
