@@ -246,6 +246,84 @@ def run_app():
                                 day_store[(p, skey)] = {"letter": sanitize_letter(v_let), "absent": v_abs}
 
                         st.success("배정 및 결석이 적용되었습니다. 아래 출석부/인쇄에 반영됩니다.")
+
+            # 💡 [해결 1] 들여쓰기를 왼쪽으로 쭉 뺐습니다! (기존 expander와 동일한 선상)
+            # ---------------------------------------------------------
+            # 🧪 [테스트] st.data_editor 엑셀형 입력 방식 비교용
+            # ---------------------------------------------------------
+            with st.expander("🧪 [테스트] 엑셀형 입력 방식", expanded=False):
+                st.caption("💡 **Enter**로 상하 이동 가능!")
+                
+                with st.form(key=f"test_editor_form_{date_key}", clear_on_submit=False):
+                    ec1, ec2, ec3 = st.columns(3)
+                    edited_dfs = {}
+
+                    def render_data_editor(col, p):
+                        with col:
+                            st.markdown(f"**{p}교시**")
+                            df_p = per_period_students.get(p, pd.DataFrame())
+                            if df_p.empty:
+                                st.caption("해당 교시 학생 없음")
+                                return None
+                                
+                            editor_data = []
+                            for _, row in df_p.iterrows():
+                                skey = get_student_key(row)
+                                
+                                current = day_store.get((p, skey), {})
+                                if isinstance(current, str):
+                                    c_let = sanitize_letter(current)
+                                    c_abs = False
+                                else:
+                                    c_let = sanitize_letter(current.get("letter", ""))
+                                    c_abs = bool(current.get("absent", False))
+                                
+                                editor_data.append({
+                                    "_skey": skey,
+                                    "이름": f"{row[COL_NAME]} ({row[COL_SCHOOL]} {row[COL_GRADE]})",
+                                    "배정": c_let,
+                                    "결석": c_abs
+                                })
+                            
+                            df_editor = pd.DataFrame(editor_data)
+                            
+                            # 💡 [해결 2] 스크롤 없애기: (학생 수 * 35px) + 표 머리글(40px) 
+                            dynamic_height = (len(df_editor) * 35) + 40
+                            
+                            edited_df = st.data_editor(
+                                df_editor,
+                                height=dynamic_height, # ✅ 계산한 높이를 적용해서 스크롤 제거!
+                                column_config={
+                                    "_skey": None,
+                                    "이름": st.column_config.TextColumn("이름", disabled=True),
+                                    "배정": st.column_config.TextColumn("배정", max_chars=1),
+                                    "결석": st.column_config.CheckboxColumn("결석")
+                                },
+                                hide_index=True,
+                                key=f"test_editor_{date_key}_{p}",
+                                use_container_width=True
+                            )
+                            return edited_df
+
+                    edited_dfs[1] = render_data_editor(ec1, 1)
+                    edited_dfs[2] = render_data_editor(ec2, 2)
+                    edited_dfs[3] = render_data_editor(ec3, 3)
+
+                    if st.form_submit_button("적용"):
+                        for p in [1, 2, 3]:
+                            df_edited = edited_dfs.get(p)
+                            if df_edited is not None and not df_edited.empty:
+                                for _, row in df_edited.iterrows():
+                                    skey = row["_skey"]
+                                    v_let = row["배정"]
+                                    v_abs = row["결석"]
+                                    
+                                    day_store[(p, skey)] = {
+                                        "letter": sanitize_letter(v_let), 
+                                        "absent": bool(v_abs)
+                                    }
+                        
+                        st.success("엑셀형 방식 데이터가 적용되었습니다! 표에 반영된 것을 확인해 보세요.")
             # 출석부 표 렌더링
             st.markdown(f"<div class='a4-print-box'><div class='report-view'>{generate_table3(df, d3, False, day_store)}</div></div>", unsafe_allow_html=True)
 
