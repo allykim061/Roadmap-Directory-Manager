@@ -170,116 +170,17 @@ def run_app():
             # 교시별 학생 목록 (안정 필터)
             per_period_students = {}
             for p in [1, 2, 3]:
-                df_p = filter_students_for_day_period(df_day, weekday, p)
+                df_p = filter_students_for_day_period(df_day, weekday, p).copy()
                 df_p["_grade_order"] = df_p[COL_GRADE].map(grade_sort_map).fillna(999)
                 df_p = df_p.sort_values(["_grade_order", COL_SCHOOL, COL_NAME])
                 per_period_students[p] = df_p
 
-            # 배정/결석 입력 UI (인쇄 제외)
-            with st.expander("선생님 배정, 결석 입력", expanded=False):
-                st.caption("💡배정은 알파벳 1글자만 입력하세요. **Tab 2번** 누르면 이동!")
-                st.caption("결석자는 ☐에 체크. **적용**을 누르면 반영됩니다.")
-
-                # ✨ [추가] 리스트형 UI 납작하게 압축하는 CSS (12pt 적용)
-                st.markdown("""
-                    <style>
-                        /* 1. 텍스트 입력칸(배정) 높이와 글자 크기 12pt로 압축 */
-                        div[data-testid="stTextInput"] input {
-                            font-size: 12pt !important;
-                            min-height: 28px !important;
-                            height: 28px !important;
-                            padding: 2px 8px !important;
-                        }
-                        
-                        /* 2. 체크박스(결석) 위아래 여백 줄이기 */
-                        div[data-testid="stCheckbox"] {
-                            min-height: 28px !important;
-                            padding-top: 4px !important;
-                        }
-                    </style>
-                """, unsafe_allow_html=True)
-
-                # ✅ 폼 시작
-                with st.form(key=f"assign_form_{date_key}", clear_on_submit=False):
-                    c1, c2, c3 = st.columns(3)
-
-                    def render_period_inputs(col, p):
-                        with col:
-                            st.markdown(f"**{p}교시**")
-                            df_p = per_period_students.get(p, pd.DataFrame())
-                            if df_p.empty:
-                                st.caption("해당 교시 학생 없음")
-                                return
-
-                            for _, row in df_p.iterrows():
-                                skey = get_student_key(row)
-                                
-                                # 데이터 불러오기
-                                current = day_store.get((p, skey), {})
-                                if isinstance(current, str):
-                                    c_letter = sanitize_letter(current)
-                                    c_abs = False
-                                else:
-                                    c_letter = sanitize_letter(current.get("letter", ""))
-                                    c_abs = bool(current.get("absent", False))
-
-                                label = f"{row[COL_NAME]} ({row[COL_SCHOOL]} {row[COL_GRADE]})"
-
-                                # ✅ 한 줄 압축 & 순서 원복: 이름(5) -> 배정(3.5) -> 결석(1.5)
-                                c_name, c_assign, c_absent = st.columns([5, 3.5, 1.5], vertical_alignment="center")
-                                
-                                # 1번 칸: 이름 (맨 왼쪽) - 12pt 크기로 출력
-                                with c_name:
-                                    st.markdown(f"<div style='font-size: 12pt; margin-top: 4px;'>{label}</div>", unsafe_allow_html=True)
-                                
-                                # 2번 칸: 배정 입력 (가운데)
-                                with c_assign:
-                                    st.text_input(
-                                        "assign",
-                                        value=c_letter,
-                                        max_chars=1,
-                                        key=f"assign_{date_key}_{p}_{skey}",
-                                        label_visibility="collapsed"
-                                    )
-
-                                # 3번 칸: 결석 체크박스 (맨 오른쪽)
-                                with c_absent:
-                                    st.checkbox(
-                                        "absent",
-                                        value=c_abs,
-                                        key=f"absent_{date_key}_{p}_{skey}",
-                                        label_visibility="collapsed"
-                                    )
-
-                    # 함수 실행
-                    render_period_inputs(c1, 1)
-                    render_period_inputs(c2, 2)
-                    render_period_inputs(c3, 3)
-
-                    # 적용 버튼
-                    apply_clicked = st.form_submit_button("적용")
-
-                    if apply_clicked:
-                        for p in [1, 2, 3]:
-                            df_p = per_period_students.get(p, pd.DataFrame())
-                            if df_p.empty: continue
-                            for _, row in df_p.iterrows():
-                                skey = get_student_key(row)
-                                v_let = st.session_state.get(f"assign_{date_key}_{p}_{skey}", "")
-                                v_abs = st.session_state.get(f"absent_{date_key}_{p}_{skey}", False)
-                                
-                                day_store[(p, skey)] = {"letter": sanitize_letter(v_let), "absent": v_abs}
-
-                        st.success("적용되었습니다. 출석부에 반영됩니다.")
-
-            # 💡 [해결 1] 들여쓰기를 왼쪽으로 쭉 뺐습니다! (기존 expander와 동일한 선상)
-            # ---------------------------------------------------------
-            # 🧪 [테스트] st.data_editor 엑셀형 입력 방식 비교용
-            # ---------------------------------------------------------
-            with st.expander("🧪 [테스트] 엑셀형 입력 방식", expanded=False):
-                st.caption("💡 **Enter**로 이동!")
+            # 배정/결석 입력 UI (인쇄 제외) - 엑셀형 최종 확정!
+            with st.expander("📝 배정, 결석 입력", expanded=False):
+                st.caption("💡 배정: 알파벳 1글자 입력 · Enter / 방향키 이동")
                 
-                with st.form(key=f"test_editor_form_{date_key}", clear_on_submit=False):
+                # 버퍼링 방지용 폼
+                with st.form(key=f"assign_form_{date_key}", clear_on_submit=False):
                     ec1, ec2, ec3 = st.columns(3)
                     edited_dfs = {}
 
@@ -312,20 +213,20 @@ def run_app():
                             
                             df_editor = pd.DataFrame(editor_data)
                             
-                            # 💡 [해결 2] 스크롤 없애기: (학생 수 * 35px) + 표 머리글(40px) 
+                            # 스크롤 없애기 (자동 높이 계산)
                             dynamic_height = (len(df_editor) * 35) + 40
                             
                             edited_df = st.data_editor(
                                 df_editor,
-                                height=dynamic_height, # ✅ 계산한 높이를 적용해서 스크롤 제거!
+                                height=dynamic_height,
                                 column_config={
-                                    "_skey": None,
+                                    "_skey": None, # 숨김 키
                                     "이름": st.column_config.TextColumn("이름", disabled=True),
                                     "배정": st.column_config.TextColumn("배정", max_chars=1),
                                     "결석": st.column_config.CheckboxColumn("결석")
                                 },
                                 hide_index=True,
-                                key=f"test_editor_{date_key}_{p}",
+                                key=f"editor_{date_key}_{p}",
                                 use_container_width=True
                             )
                             return edited_df
@@ -334,6 +235,7 @@ def run_app():
                     edited_dfs[2] = render_data_editor(ec2, 2)
                     edited_dfs[3] = render_data_editor(ec3, 3)
 
+                    # 적용 버튼
                     if st.form_submit_button("적용"):
                         for p in [1, 2, 3]:
                             df_edited = edited_dfs.get(p)
@@ -348,10 +250,10 @@ def run_app():
                                         "absent": bool(v_abs)
                                     }
                         
-                        st.success("엑셀형 방식 데이터가 적용되었습니다! 표에 반영된 것을 확인해 보세요.")
+                        st.success("출석부에 반영되었습니다.")
+
             # 출석부 표 렌더링
             st.markdown(f"<div class='a4-print-box'><div class='report-view'>{generate_table3(df, d3, False, day_store)}</div></div>", unsafe_allow_html=True)
-
     # 탭 4
     with tab_list[4]:
         if not df.empty:
